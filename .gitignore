@@ -1,20 +1,11 @@
-# Секрети (Secrets)
 .env
-
-# Віртуальне середовище (Virtual Environment)
 .venv/
-env/
-venv/
-
-# Дані (Generated Data)
 isaac_raw_data.json
 
-# Кеш Python (Python cache)
 __pycache__/
 *.pyc
 *.pyo
 *.pyd
 
-# Налаштування редактора (IDE settings)
 .vscode/
 .idea/
