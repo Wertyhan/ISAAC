@@ -1,11 +1,21 @@
 .env
-.venv/
-isaac_raw_data.json
+.env.local
 
 __pycache__/
-*.pyc
-*.pyo
-*.pyd
+*.py[cod]
+*$py.class
+
+venv/
+.venv/
+env/
+
+isaac_raw_data.json
+*.log
+
+.pytest_cache/
+.coverage
+htmlcov/
 
 .vscode/
 .idea/
+*.swp
