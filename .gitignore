@@ -19,3 +19,9 @@ htmlcov/
 .vscode/
 .idea/
 *.swp
+
+.scannerwork/
+.sonar/
+
+data/
+isaac.log
