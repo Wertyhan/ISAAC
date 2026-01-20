@@ -1,7 +1,7 @@
 import json
 import logging
 from pathlib import Path
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, Callable, Iterable
 
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_postgres import PGVector
@@ -28,14 +28,14 @@ class IngestionPipeline:
     def __init__(
         self,
         config: Config,
-        gemini_client: Optional[GeminiVisionClient] = None,
-        image_manager: Optional[ImageManager] = None,
-        text_processor: Optional[TextProcessor] = None,
+        gemini_client: GeminiVisionClient,
+        image_manager: ImageManager,
+        text_processor: TextProcessor,
     ):
         self._config = config
-        self._gemini = gemini_client or GeminiVisionClient(config)
-        self._images = image_manager or ImageManager(config)
-        self._text = text_processor or TextProcessor(config)
+        self._gemini = gemini_client
+        self._images = image_manager
+        self._text = text_processor
         self._vector_store: Optional[PGVector] = None
         self._stats = {
             "projects_processed": 0,
@@ -45,7 +45,7 @@ class IngestionPipeline:
             "errors": 0,
         }
     
-    def run(self) -> Dict[str, int]:
+    def run(self, progress_wrapper: Optional[Callable[[Iterable], Iterable]] = None) -> Dict[str, int]:
         """Execute the full pipeline, return stats."""
         logger.info("Starting ingestion pipeline")
         
@@ -59,7 +59,9 @@ class IngestionPipeline:
         # Process each project
         all_documents: List[Document] = []
         
-        for project_data in raw_data:
+        iterator = progress_wrapper(raw_data) if progress_wrapper else raw_data
+        
+        for project_data in iterator:
             try:
                 docs = self._process_project(project_data)
                 all_documents.extend(docs)
@@ -108,41 +110,40 @@ class IngestionPipeline:
             raise DatabaseConnectionError(f"Failed to connect to vector store: {e}") from e
     
     def _process_project(self, project_data: Dict[str, Any]) -> List[Document]:
-        project_name = project_data.get("project_name", "unknown")
-        category = project_data.get("category", "general")
+        metadata = self._extract_project_metadata(project_data)
+        content = self._prepare_content(project_data, metadata)
+        return self._text.create_chunks(content, metadata)
+
+    def _extract_project_metadata(self, project_data: Dict[str, Any]) -> Dict[str, Any]:
+        return {
+            "project_name": project_data.get("project_name", "unknown"),
+            "category": project_data.get("category", "general"),
+            "source_path": project_data.get("source_path", ""),
+            "source": "isaac_scraper",
+        }
+
+    def _prepare_content(self, project_data: Dict[str, Any], metadata: Dict[str, Any]) -> str:
+        project_name = metadata["project_name"]
         content = project_data.get("readme_content", "")
         diagram_url = project_data.get("diagram_url")
-        source_path = project_data.get("source_path", "")
-        
+
         logger.debug(f"Processing: {project_name}")
-        
+
         # Clean content
         content = self._text.clean_text(content)
-        
+
         # Extract and process images
         image_urls = self._text.extract_image_urls(content)
-        
+
         # Add diagram_url if present and not already in content
         if diagram_url and diagram_url not in image_urls:
             image_urls.insert(0, diagram_url)
-        
+
         # Download and describe images
         for url in image_urls:
             content = self._process_image(content, url, project_name)
         
-        # Create chunks with metadata
-        base_metadata = {
-            "project_name": project_name,
-            "category": category,
-            "source_path": source_path,
-            "source": "isaac_scraper",
-        }
-        
-        chunks = self._text.create_chunks(content, base_metadata)
-        self._stats["chunks_created"] += len(chunks)
-        
-        logger.info(f"+ {project_name}: {len(chunks)} chunks")
-        return chunks
+        return content
     
     def _process_image(self, content: str, url: str, project_name: str) -> str:
         # Download
@@ -195,4 +196,10 @@ class IngestionPipeline:
 def create_pipeline(config: Optional[Config] = None) -> IngestionPipeline:
     if config is None:
         config = Config()
-    return IngestionPipeline(config)
+    
+    return IngestionPipeline(
+        config=config,
+        gemini_client=GeminiVisionClient(config),
+        image_manager=ImageManager(config),
+        text_processor=TextProcessor(config),
+    )

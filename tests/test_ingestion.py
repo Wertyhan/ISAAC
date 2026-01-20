@@ -44,10 +44,12 @@ class TestImageManager:
         assert "abc123def456"[:12] in path.name
         assert path.suffix == ".png"
 
-    def test_download_invalid_url_returns_none(self, mock_ingestion_config):
+    def test_download_invalid_url_returns_none(self, mock_ingestion_config, caplog):
         im = ImageManager(mock_ingestion_config)
-        result = im.download("not-valid", "project")
-        assert result is None
+        with caplog.at_level('WARNING'):
+            result = im.download("not-valid", "project")
+            assert result is None
+            assert "Invalid image URL" in caplog.text
 
 
 class TestGeminiVisionClient:

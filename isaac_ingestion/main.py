@@ -6,6 +6,9 @@ from tqdm import tqdm
 
 from isaac_ingestion.config import Config
 from isaac_ingestion.pipeline import IngestionPipeline
+from isaac_ingestion.clients.gemini_client import GeminiVisionClient
+from isaac_ingestion.services.image_manager import ImageManager
+from isaac_ingestion.services.text_processor import TextProcessor
 from isaac_ingestion.exceptions import (
     IngestionError,
     InvalidInputError,
@@ -29,42 +32,17 @@ def _build_overrides(args: argparse.Namespace) -> dict:
     return overrides
 
 
-# Pipeline with Progress
-class ProgressPipeline(IngestionPipeline):
+def _create_pipeline(config: Config) -> IngestionPipeline:
+    gemini_client = GeminiVisionClient(config)
+    image_manager = ImageManager(config)
+    text_processor = TextProcessor(config)
     
-    def run(self) -> dict:
-        logger.info("Starting ingestion pipeline")
-        
-        # Load raw data
-        raw_data = self._load_raw_data()
-        logger.info(f"Loaded {len(raw_data)} projects from {self._config.raw_data_file}")
-        
-        # Initialize vector store
-        self._init_vector_store()
-        
-        # Process with progress bar
-        all_documents = []
-        
-        with tqdm(raw_data, desc="Processing projects", unit="project") as pbar:
-            for project_data in pbar:
-                project_name = project_data.get("project_name", "unknown")
-                pbar.set_postfix(project=project_name[:20])
-                
-                try:
-                    docs = self._process_project(project_data)
-                    all_documents.extend(docs)
-                    self._stats["projects_processed"] += 1
-                except Exception as e:
-                    logger.error(f"Failed to process {project_name}: {e}")
-                    self._stats["errors"] += 1
-        
-        # Persist to vector store
-        if all_documents:
-            logger.info(f"Persisting {len(all_documents)} documents to vector store...")
-            self._persist_documents(all_documents)
-        
-        logger.info(f"Pipeline complete. Stats: {self._stats}")
-        return dict(self._stats)
+    return IngestionPipeline(
+        config=config,
+        gemini_client=gemini_client,
+        image_manager=image_manager,
+        text_processor=text_processor,
+    )
 
 
 # Execution
@@ -92,8 +70,13 @@ def main() -> int:
         overrides = _build_overrides(args)
         config = Config(**overrides)
         
-        with ProgressPipeline(config) as pipeline:
-            stats = pipeline.run()
+        with _create_pipeline(config) as pipeline:
+            
+            # Define progress wrapper
+            def progress_wrapper(iterable):
+                return tqdm(iterable, desc="Processing projects", unit="project")
+                
+            stats = pipeline.run(progress_wrapper=progress_wrapper)
             
             # Print summary
             print("\n" + "=" * 50)

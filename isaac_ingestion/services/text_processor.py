@@ -49,8 +49,7 @@ class TextProcessor:
         description: str,
     ) -> str:
         """Replace image markdown link with descriptive token."""
-        escaped_url = re.escape(image_url)
-        pattern = rf'!\[[^\]]*\]\({escaped_url}(?:\s*"[^"]*")?\)'
+        pattern = self._build_image_pattern(image_url)
         
         token = IMAGE_TOKEN_TEMPLATE.format(
             image_id=image_id,
@@ -65,6 +64,10 @@ class TextProcessor:
             logger.debug(f"Image URL not found in text: {image_url[:50]}...")
         
         return result
+
+    def _build_image_pattern(self, image_url: str) -> str:
+        escaped_url = re.escape(image_url)
+        return rf'!\[[^\]]*\]\({escaped_url}(?:\s*"[^"]*")?\)'
     
     def create_chunks(
         self,

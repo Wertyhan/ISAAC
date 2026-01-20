@@ -63,7 +63,6 @@ class GeminiVisionClient:
             except GeminiRateLimitError as e:
                 last_error = e
                 if attempt < self._config.vision_max_retries:
-                    # New SDK error might provide retry_after, or we fallback to config
                     wait_time = getattr(e, 'retry_after', self._config.vision_retry_delay * (2 ** attempt))
                     logger.warning(f"Rate limited. Waiting {wait_time:.0f}s (attempt {attempt + 1})")
                     time.sleep(wait_time)
@@ -100,23 +99,17 @@ class GeminiVisionClient:
             logger.debug(f"Generated description for {image_path.name}: {description[:100]}...")
             return description
             
+        except genai.errors.ResourceExhausted as e:
+            raise GeminiQuotaExceededError(str(e)) from e
+        except genai.errors.RateLimitError as e:
+            raise GeminiRateLimitError() from e
+        except genai.errors.InvalidArgument as e:
+            logger.warning(f"Invalid image format or request: {image_path.name} - {e}")
+            return FALLBACK_DESCRIPTION
         except Exception as e:
-            error_str = str(e).lower()
-            if "429" in error_str or "too many requests" in error_str:
-                raise GeminiRateLimitError() from e
-            elif "403" in error_str or "quota" in error_str or "resource exhausted" in error_str:
-                 raise GeminiQuotaExceededError(str(e)) from e
-            elif "400" in error_str or "invalid" in error_str:
-                logger.warning(f"Invalid image format or request: {image_path.name} - {e}")
-                return FALLBACK_DESCRIPTION
-            else:
-                raise GeminiAPIError("Generation failed", str(e)) from e
+            raise GeminiAPIError("Generation failed", str(e)) from e
     
     def _load_image(self, image_path: Path) -> types.File:
-        # The new SDK has client.files.upload
-        # We need to determine usage.
-        # client.files.upload(path=...) or client.files.upload(file=...)
-        # Based on new SDK, path is supported directly.
         return self._client.files.upload(path=image_path)
 
     def close(self) -> None:
