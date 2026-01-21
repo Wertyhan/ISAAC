@@ -1,4 +1,3 @@
-# Imports
 from typing import Protocol, List, Optional, runtime_checkable
 
 

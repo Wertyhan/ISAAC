@@ -1,4 +1,3 @@
-# Imports
 import base64
 import logging
 from typing import List, Optional, Set, Dict
