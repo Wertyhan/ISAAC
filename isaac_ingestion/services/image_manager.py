@@ -19,7 +19,7 @@ CHUNK_SIZE = 8192
 
 
 class ImageManager:
-    """Image downloading and local storage."""
+    """Image downloading and local storage with full traceability."""
     
     def __init__(self, config: Config):
         self._config = config
@@ -29,20 +29,32 @@ class ImageManager:
             "Accept": "image/*",
         })
     
-    def download(self, url: str, project_name: str) -> Optional[ImageMeta]:
+    def download(
+        self, 
+        url: str, 
+        project_name: str,
+        doc_id: Optional[str] = None,
+        caption: Optional[str] = None,
+    ) -> Optional[ImageMeta]:
         """Download image from URL, return ImageMeta or None."""
         if not self._is_valid_url(url):
             logger.warning(f"Invalid image URL: {url}")
             return None
         
-        return self._retry_download(url, project_name)
+        return self._retry_download(url, project_name, doc_id, caption)
     
-    def _retry_download(self, url: str, project_name: str) -> Optional[ImageMeta]:
+    def _retry_download(
+        self, 
+        url: str, 
+        project_name: str,
+        doc_id: Optional[str] = None,
+        caption: Optional[str] = None,
+    ) -> Optional[ImageMeta]:
         last_error: Optional[Exception] = None
         
         for attempt in range(self._config.download_max_retries + 1):
             try:
-                return self._perform_download(url, project_name)
+                return self._perform_download(url, project_name, doc_id, caption)
                 
             except (ImageDownloadError, NetworkTimeoutError) as e:
                 last_error = e
@@ -58,7 +70,13 @@ class ImageManager:
         logger.error(f"Download failed after retries: {url} - {last_error}")
         return None
     
-    def _perform_download(self, url: str, project_name: str) -> ImageMeta:
+    def _perform_download(
+        self, 
+        url: str, 
+        project_name: str,
+        doc_id: Optional[str] = None,
+        caption: Optional[str] = None,
+    ) -> ImageMeta:
         try:
             response = self._session.get(
                 url,
@@ -94,6 +112,8 @@ class ImageManager:
             local_path=local_path,
             file_hash=file_hash,
             project_name=project_name,
+            doc_id=doc_id,
+            caption=caption,
         )
     
     def _compute_hash(self, content: bytes) -> str:

@@ -1,9 +1,54 @@
+from datetime import datetime
 from typing import List, Optional, Dict, Any
 from pydantic import BaseModel, Field, field_validator
 
 
+class DocumentMetadata(BaseModel):
+    """Full document metadata for traceability."""
+    
+    doc_id: str = Field(
+        ...,
+        description="Unique document identifier (hash-based)",
+        examples=["DOC_abc123def456"],
+    )
+    title: str = Field(
+        ...,
+        description="Document title",
+    )
+    source_uri: str = Field(
+        ...,
+        description="Original source URL or path",
+    )
+    created_at: datetime = Field(
+        ...,
+        description="Document ingestion timestamp",
+    )
+    project_name: str = Field(
+        ...,
+        description="Project/source name",
+    )
+    category: str = Field(
+        default="general",
+        description="Document category",
+    )
+    chunk_index: int = Field(
+        ...,
+        ge=0,
+        description="Index of this chunk within the document",
+    )
+    total_chunks: int = Field(
+        default=1,
+        ge=1,
+        description="Total number of chunks in the source document",
+    )
+    section: Optional[str] = Field(
+        default=None,
+        description="Section header if available",
+    )
+
+
 class QueryRequest(BaseModel):
-    #Search query request.
+    """Search query request."""
     
     model_config = {"validate_assignment": True}
     
@@ -52,16 +97,32 @@ class QueryRequest(BaseModel):
 
 
 class ImageReference(BaseModel):
-    #Extracted image reference from document chunks.
+    """Extracted image reference from document chunks."""
     
     image_id: str = Field(
         ...,
         description="Unique image identifier",
         examples=["IMG_abc123def456"],
     )
+    doc_id: Optional[str] = Field(
+        default=None,
+        description="Parent document ID",
+    )
     description: Optional[str] = Field(
         default=None,
         description="AI-generated image description",
+    )
+    caption: Optional[str] = Field(
+        default=None,
+        description="Original caption if available",
+    )
+    source_uri: Optional[str] = Field(
+        default=None,
+        description="Original image URL",
+    )
+    filepath: Optional[str] = Field(
+        default=None,
+        description="Local file path",
     )
     source_chunk_index: int = Field(
         ...,
@@ -71,8 +132,17 @@ class ImageReference(BaseModel):
 
 
 class DocumentChunk(BaseModel):
-    #Retrieved document chunk with metadata.
+    """Retrieved document chunk with full traceability."""
     
+    chunk_id: str = Field(
+        ...,
+        description="Unique chunk identifier",
+        examples=["CHK_abc123_0"],
+    )
+    doc_id: str = Field(
+        ...,
+        description="Parent document identifier",
+    )
     content: str = Field(
         ...,
         description="The text content of the document chunk",
@@ -91,10 +161,18 @@ class DocumentChunk(BaseModel):
         default=False,
         description="Whether this chunk contains image references",
     )
+    source_uri: Optional[str] = Field(
+        default=None,
+        description="Original source URL for citation",
+    )
+    section: Optional[str] = Field(
+        default=None,
+        description="Section/header name",
+    )
 
 
 class RetrievalResponse(BaseModel):
-    #Search response with documents and images.
+    """Search response with documents and images."""
     
     query: str = Field(
         ...,
@@ -116,6 +194,14 @@ class RetrievalResponse(BaseModel):
     has_more: bool = Field(
         default=False,
         description="Indicates if more results might be available",
+    )
+    retrieval_mode: str = Field(
+        default="hybrid",
+        description="Retrieval mode used: 'hybrid', 'vector', 'bm25'",
+    )
+    max_score: Optional[float] = Field(
+        default=None,
+        description="Maximum relevance score among results",
     )
 
 

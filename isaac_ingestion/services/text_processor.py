@@ -2,6 +2,7 @@
 
 import logging
 import re
+from datetime import datetime
 from typing import List, Dict, Any
 
 from langchain_text_splitters import (
@@ -10,7 +11,7 @@ from langchain_text_splitters import (
 )
 from langchain_core.documents import Document
 
-from isaac_ingestion.config import Config
+from isaac_ingestion.config import Config, generate_chunk_id
 
 logger = logging.getLogger(__name__)
 
@@ -73,10 +74,20 @@ class TextProcessor:
         text: str,
         metadata: Dict[str, Any],
     ) -> List[Document]:
-        """Split text into chunks with two-stage approach: headers then size."""
+        """Split text into chunks with two-stage approach: headers then size.
+        
+        Each chunk receives:
+        - chunk_id: Unique identifier (CHK_{doc_hash}_{index})
+        - doc_id: Parent document ID
+        - chunk_index: Position in document
+        - section: Header context (h1, h2, etc.)
+        - All base metadata (project_name, category, source_uri, created_at)
+        """
         if not text or not text.strip():
             logger.warning("Empty text provided for chunking")
             return []
+        
+        doc_id = metadata.get("doc_id", "DOC_unknown")
         
         # Split by headers
         header_docs = self._header_splitter.split_text(text)
@@ -96,22 +107,39 @@ class TextProcessor:
             if len(content) > self._config.chunk_size:
                 sub_chunks = self._text_splitter.split_text(content)
                 for j, sub_chunk in enumerate(sub_chunks):
+                    chunk_index = len(final_docs)
+                    chunk_id = generate_chunk_id(doc_id, chunk_index)
+                    section = chunk_metadata.get("h2") or chunk_metadata.get("h1") or None
+                    
                     final_docs.append(Document(
                         page_content=sub_chunk,
                         metadata={
                             **chunk_metadata,
-                            "chunk_index": len(final_docs),
+                            "chunk_id": chunk_id,
+                            "chunk_index": chunk_index,
                             "sub_chunk": j,
+                            "section": section,
                         },
                     ))
             else:
+                chunk_index = len(final_docs)
+                chunk_id = generate_chunk_id(doc_id, chunk_index)
+                section = chunk_metadata.get("h2") or chunk_metadata.get("h1") or None
+                
                 final_docs.append(Document(
                     page_content=content,
                     metadata={
                         **chunk_metadata,
-                        "chunk_index": len(final_docs),
+                        "chunk_id": chunk_id,
+                        "chunk_index": chunk_index,
+                        "section": section,
                     },
                 ))
+        
+        # Add total_chunks count to all chunks
+        total_chunks = len(final_docs)
+        for doc in final_docs:
+            doc.metadata["total_chunks"] = total_chunks
         
         logger.debug(f"Created {len(final_docs)} chunks from text ({len(text)} chars)")
         return final_docs

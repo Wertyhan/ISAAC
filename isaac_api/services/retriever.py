@@ -90,17 +90,25 @@ class RetrieverService:
         k: Optional[int] = None,
         filter_metadata: Optional[Dict[str, Any]] = None,
     ) -> RetrievalResponse:
+        """Execute hybrid search with reranking and return full response."""
         final_k = k or FINAL_PRECISION_K
         logger.info(f"Search: '{query[:50]}…' | recall={INITIAL_RECALL_K}, final={final_k}")
+
+        # Determine retrieval mode
+        use_hybrid = self._ensemble_retriever and not filter_metadata
+        retrieval_mode = "hybrid" if use_hybrid else "vector"
 
         candidates = self._fetch_candidates(query, filter_metadata)
 
         if not candidates:
-            return self._empty_response(query)
+            return self._empty_response(query, retrieval_mode)
 
         reranked = self._rerank_results(query, candidates, top_k=final_k)
 
         chunks, images = self._build_chunks(reranked)
+        
+        # Calculate max score
+        max_score = max((c.score for c in chunks), default=0.0)
 
         return RetrievalResponse(
             query=query,
@@ -108,6 +116,8 @@ class RetrieverService:
             chunks=chunks,
             images=images,
             has_more=len(candidates) > final_k,
+            retrieval_mode=retrieval_mode,
+            max_score=max_score,
         )
 
     def _fetch_candidates(
@@ -167,6 +177,7 @@ class RetrieverService:
         self,
         results: List[Tuple[Document, float]],
     ) -> Tuple[List[DocumentChunk], List[ImageReference]]:
+        """Build DocumentChunk and ImageReference lists with full traceability."""
         chunks: List[DocumentChunk] = []
         images: List[ImageReference] = []
         seen_image_ids: set[str] = set()
@@ -175,30 +186,49 @@ class RetrieverService:
             content = doc.page_content
             metadata = doc.metadata or {}
 
-            chunk_images = self._extract_images(content, idx)
+            chunk_images = self._extract_images(content, idx, metadata)
             for img in chunk_images:
                 if img.image_id not in seen_image_ids:
                     images.append(img)
                     seen_image_ids.add(img.image_id)
 
+            # Extract traceability fields
+            doc_id = metadata.get("doc_id", f"DOC_unknown_{idx}")
+            chunk_id = metadata.get("chunk_id", f"CHK_unknown_{idx}")
+            source_uri = metadata.get("source_uri", "")
+            section = metadata.get("section") or metadata.get("h2") or metadata.get("h1")
+
             chunks.append(
                 DocumentChunk(
+                    chunk_id=chunk_id,
+                    doc_id=doc_id,
                     content=content,
                     metadata=metadata,
                     score=round(score, 4),
                     has_images=bool(chunk_images),
+                    source_uri=source_uri,
+                    section=section,
                 )
             )
 
         return chunks, images
 
-    def _extract_images(self, content: str, chunk_index: int) -> List[ImageReference]:
+    def _extract_images(
+        self, 
+        content: str, 
+        chunk_index: int,
+        metadata: Optional[Dict[str, Any]] = None,
+    ) -> List[ImageReference]:
+        """Extract image references with full traceability."""
         images: List[ImageReference] = []
+        metadata = metadata or {}
+        doc_id = metadata.get("doc_id")
 
         for match in IMG_REF_PATTERN.finditer(content):
             images.append(
                 ImageReference(
                     image_id=match.group("id"),
+                    doc_id=doc_id,
                     description=match.group("desc").strip(),
                     source_chunk_index=chunk_index,
                 )
@@ -206,13 +236,15 @@ class RetrieverService:
 
         return images
 
-    def _empty_response(self, query: str) -> RetrievalResponse:
+    def _empty_response(self, query: str, retrieval_mode: str = "hybrid") -> RetrievalResponse:
         return RetrievalResponse(
             query=query,
             total_results=0,
             chunks=[],
             images=[],
             has_more=False,
+            retrieval_mode=retrieval_mode,
+            max_score=0.0,
         )
 
 

@@ -1,0 +1,335 @@
+{
+  "timestamp": "2026-01-30T01:05:39.033838",
+  "config": {
+    "k_values": [
+      1,
+      3,
+      5,
+      10
+    ]
+  },
+  "dataset_stats": {
+    "total_queries": 28,
+    "by_type": {
+      "text_to_architecture": 21,
+      "similarity_search": 3,
+      "off_topic": 4
+    },
+    "by_difficulty": {
+      "easy": 11,
+      "medium": 12,
+      "hard": 5
+    },
+    "with_expected_docs": 0,
+    "with_expected_images": 6,
+    "off_topic_queries": 4
+  },
+  "retrieval_metrics": {
+    "recall_at_k": {
+      "1": 0.0,
+      "3": 0.0,
+      "5": 0.0,
+      "10": 0.0
+    },
+    "precision_at_k": {
+      "1": 0.0,
+      "3": 0.0,
+      "5": 0.0,
+      "10": 0.0
+    },
+    "mrr": 0.0,
+    "hit_rate": 0.0,
+    "image_hit_rate": 0.0,
+    "avg_retrieval_time_ms": 0.0,
+    "avg_top_score": 0.0,
+    "num_queries": 24
+  },
+  "generation_metrics": null,
+  "error_analysis": {
+    "failure_modes": {},
+    "low_score_queries": [
+      {
+        "query_id": "T001",
+        "query": "What is a CDN and how does it improve website performance?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T001",
+        "query": "What is a CDN and how does it improve website performance?",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T002",
+        "query": "Explain the difference between SQL and NoSQL databases",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T002",
+        "query": "Explain the difference between SQL and NoSQL databases",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T003",
+        "query": "What is a load balancer and why do we need it?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T003",
+        "query": "What is a load balancer and why do we need it?",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T004",
+        "query": "What is caching and what are common caching strategies?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T004",
+        "query": "What is caching and what are common caching strategies?",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T005",
+        "query": "What is database replication?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T005",
+        "query": "What is database replication?",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T006",
+        "query": "I want to create a food delivery app like Glovo that processes many orders in real time. What architecture should I use?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T006",
+        "query": "I want to create a food delivery app like Glovo that processes many orders in real time. What architecture should I use?",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T007",
+        "query": "How do I design a URL shortener like bit.ly?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T007",
+        "query": "How do I design a URL shortener like bit.ly?",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T008",
+        "query": "Design a web crawler that can index millions of pages",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T008",
+        "query": "Design a web crawler that can index millions of pages",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T009",
+        "query": "How would you design Twitter's timeline feature?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T009",
+        "query": "How would you design Twitter's timeline feature?",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T010",
+        "query": "What is the CAP theorem and how does it affect system design?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T010",
+        "query": "What is the CAP theorem and how does it affect system design?",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T011",
+        "query": "How to implement rate limiting in a distributed system?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T011",
+        "query": "How to implement rate limiting in a distributed system?",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T012",
+        "query": "Design a notification system that can handle millions of users",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T012",
+        "query": "Design a notification system that can handle millions of users",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T013",
+        "query": "Design a distributed key-value store like DynamoDB with high availability",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T013",
+        "query": "Design a distributed key-value store like DynamoDB with high availability",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T014",
+        "query": "How would you design a system like Google Maps that handles real-time traffic updates?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T014",
+        "query": "How would you design a system like Google Maps that handles real-time traffic updates?",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T015",
+        "query": "Design a stock exchange system that processes millions of trades per second",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T015",
+        "query": "Design a stock exchange system that processes millions of trades per second",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "I001",
+        "query": "Show me architecture diagrams for scaling a web application",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "I001",
+        "query": "Show me architecture diagrams for scaling a web application",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "I002",
+        "query": "Show me the microservices diagram for a courier tracking system",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "I002",
+        "query": "Show me the microservices diagram for a courier tracking system",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "I003",
+        "query": "Find diagrams showing database sharding patterns",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "I003",
+        "query": "Find diagrams showing database sharding patterns",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "G001",
+        "query": "What are the trade-offs of using microservices vs monolithic architecture?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "G001",
+        "query": "What are the trade-offs of using microservices vs monolithic architecture?",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "G002",
+        "query": "How does consistent hashing work in distributed systems?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "G002",
+        "query": "How does consistent hashing work in distributed systems?",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "G003",
+        "query": "Explain the differences between horizontal and vertical scaling",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "G003",
+        "query": "Explain the differences between horizontal and vertical scaling",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "E001",
+        "query": "How does Spotify's machine learning recommendation engine work internally?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "E002",
+        "query": "What is the exact architecture of TikTok's video processing pipeline?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "M001",
+        "query": "How does a polyglot database strategy work for high-volume traffic?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "M001",
+        "query": "How does a polyglot database strategy work for high-volume traffic?",
+        "top_score": 0.0,
+        "issue": "Low relevance score - embedding mismatch"
+      }
+    ]
+  },
+  "recommendations": [
+    "**Improve ranking quality**: MRR is below 0.5. Consider tuning the reranker or adjusting hybrid search weights (BM25 vs vector).",
+    "**Improve retrieval coverage**: Hit rate is below 80%. Review chunking strategy - chunks may be too large or missing key information.",
+    "**Improve image-text linkage**: Image hit rate is low. Ensure image metadata (captions, alt-text) is properly indexed and linked to documents.",
+    "**Increase embedding quality**: Recall@5 is low. Consider using domain-specific embeddings or fine-tuning on system design content."
+  ]
+}

@@ -1,0 +1,73 @@
+{
+  "timestamp": "2026-01-30T01:12:35.389682",
+  "config": {
+    "k_values": [
+      1,
+      3,
+      5,
+      10
+    ]
+  },
+  "dataset_stats": {
+    "total_queries": 20,
+    "by_type": {
+      "text_to_architecture": 17,
+      "off_topic": 3
+    },
+    "by_difficulty": {
+      "easy": 7,
+      "medium": 11,
+      "hard": 2
+    },
+    "with_expected_docs": 15,
+    "with_expected_images": 4,
+    "off_topic_queries": 3
+  },
+  "retrieval_metrics": {
+    "recall_at_k": {
+      "1": 0.7647058823529411,
+      "3": 0.8235294117647058,
+      "5": 0.8529411764705882,
+      "10": 0.8823529411764706
+    },
+    "precision_at_k": {
+      "1": 0.7647058823529411,
+      "3": 0.2745098039215686,
+      "5": 0.17647058823529416,
+      "10": 0.09411764705882354
+    },
+    "mrr": 0.8529411764705882,
+    "hit_rate": 0.8823529411764706,
+    "image_hit_rate": 0.0,
+    "avg_retrieval_time_ms": 2637.808888233849,
+    "avg_top_score": 0.6667352874304496,
+    "num_queries": 17
+  },
+  "generation_metrics": null,
+  "error_analysis": {
+    "failure_modes": {},
+    "low_score_queries": [
+      {
+        "query_id": "G012",
+        "query": "How would you design a personal finance app like Mint?",
+        "top_score": 0.007300000172108412,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "E001",
+        "query": "What is the exact internal architecture of TikTok's recommendation engine?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "E002",
+        "query": "How does Spotify's machine learning pipeline work internally?",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      }
+    ]
+  },
+  "recommendations": [
+    "**Improve image-text linkage**: Image hit rate is low. Ensure image metadata (captions, alt-text) is properly indexed and linked to documents."
+  ]
+}

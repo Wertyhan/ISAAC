@@ -1,0 +1,136 @@
+{
+  "timestamp": "2026-01-30T01:07:29.400301",
+  "config": {
+    "k_values": [
+      1,
+      3,
+      5,
+      10
+    ]
+  },
+  "dataset_stats": {
+    "total_queries": 28,
+    "by_type": {
+      "text_to_architecture": 21,
+      "similarity_search": 3,
+      "off_topic": 4
+    },
+    "by_difficulty": {
+      "easy": 11,
+      "medium": 12,
+      "hard": 5
+    },
+    "with_expected_docs": 0,
+    "with_expected_images": 6,
+    "off_topic_queries": 4
+  },
+  "retrieval_metrics": {
+    "recall_at_k": {
+      "1": 0.3177083333333333,
+      "3": 0.47569444444444436,
+      "5": 0.532986111111111,
+      "10": 0.5902777777777778
+    },
+    "precision_at_k": {
+      "1": 0.3177083333333333,
+      "3": 0.47569444444444436,
+      "5": 0.532986111111111,
+      "10": 0.5902777777777778
+    },
+    "mrr": 0.25104166666666666,
+    "hit_rate": 0.9166666666666666,
+    "image_hit_rate": 0.0,
+    "avg_retrieval_time_ms": 2854.933474999901,
+    "avg_top_score": 0.4743333318177368,
+    "num_queries": 24
+  },
+  "generation_metrics": null,
+  "error_analysis": {
+    "failure_modes": {},
+    "low_score_queries": [
+      {
+        "query_id": "T006",
+        "query": "I want to create a food delivery app like Glovo that processes many orders in real time. What architecture should I use?",
+        "recall@5": 0.25,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T006",
+        "query": "I want to create a food delivery app like Glovo that processes many orders in real time. What architecture should I use?",
+        "top_score": 9.999999747378752e-05,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T010",
+        "query": "What is the CAP theorem and how does it affect system design?",
+        "recall@5": 0.25,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T010",
+        "query": "What is the CAP theorem and how does it affect system design?",
+        "top_score": 0.013899999670684338,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T011",
+        "query": "How to implement rate limiting in a distributed system?",
+        "top_score": 0.01209999993443489,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T013",
+        "query": "Design a distributed key-value store like DynamoDB with high availability",
+        "top_score": 0.02290000021457672,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T014",
+        "query": "How would you design a system like Google Maps that handles real-time traffic updates?",
+        "top_score": 0.07199999690055847,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "T015",
+        "query": "Design a stock exchange system that processes millions of trades per second",
+        "recall@5": 0.0,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "T015",
+        "query": "Design a stock exchange system that processes millions of trades per second",
+        "top_score": 0.006500000134110451,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "I002",
+        "query": "Show me the microservices diagram for a courier tracking system",
+        "top_score": 0.2485000044107437,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "G002",
+        "query": "How does consistent hashing work in distributed systems?",
+        "top_score": 0.1647000014781952,
+        "issue": "Low relevance score - embedding mismatch"
+      },
+      {
+        "query_id": "E001",
+        "query": "How does Spotify's machine learning recommendation engine work internally?",
+        "recall@5": 0.25,
+        "issue": "Low recall - relevant content not retrieved"
+      },
+      {
+        "query_id": "M001",
+        "query": "How does a polyglot database strategy work for high-volume traffic?",
+        "top_score": 0.09740000218153,
+        "issue": "Low relevance score - embedding mismatch"
+      }
+    ]
+  },
+  "recommendations": [
+    "**Improve ranking quality**: MRR is below 0.5. Consider tuning the reranker or adjusting hybrid search weights (BM25 vs vector).",
+    "**Improve image-text linkage**: Image hit rate is low. Ensure image metadata (captions, alt-text) is properly indexed and linked to documents.",
+    "**Increase embedding quality**: Recall@5 is low. Consider using domain-specific embeddings or fine-tuning on system design content."
+  ]
+}

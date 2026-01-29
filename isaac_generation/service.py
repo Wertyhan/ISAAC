@@ -110,9 +110,11 @@ class GenerationService:
         query: str,
         chat_history: Optional[List[BaseMessage]] = None,
         user_image_path: Optional[Path] = None,
+        top_k: Optional[int] = None,
     ) -> StreamingResponse:
         """Process a user query and return streaming response."""
         chat_history = chat_history or []
+        effective_top_k = top_k or self._config.top_k_chunks
         
         # Check if query is off-topic before processing
         if self._is_offtopic_query(query):
@@ -168,7 +170,7 @@ class GenerationService:
         
         retrieval_result = self._retriever.search(
             query=search_query,
-            k=self._config.top_k_chunks,
+            k=effective_top_k,
         )
         context = self._formatter.format(retrieval_result)
         

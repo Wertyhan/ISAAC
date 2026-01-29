@@ -31,10 +31,27 @@ class FormattedContext:
     images: List[ResolvedImage]
     is_relevant: bool = True  # Whether context is relevant to the query
     max_score: float = 0.0  # Highest relevance score among chunks
+    retrieval_mode: str = "hybrid"  # 'hybrid', 'vector', 'bm25'
+    chunk_scores: List[float] = field(default_factory=list)  # Individual chunk scores for debug
+    chunks: List[Any] = field(default_factory=list)  # Raw chunks for debug preview
     
     @property
     def has_images(self) -> bool:
         return len(self.images) > 0
+
+
+@dataclass 
+class DebugInfo:
+    """Debug information for UI display."""
+    
+    retrieval_mode: str = "hybrid"
+    max_score: float = 0.0
+    chunk_count: int = 0
+    image_count: int = 0
+    chunk_scores: List[float] = field(default_factory=list)
+    chunk_previews: List[str] = field(default_factory=list)  # First 100 chars of each chunk
+    sources_used: List[str] = field(default_factory=list)
+    processing_time_ms: Optional[float] = None
 
 
 @dataclass

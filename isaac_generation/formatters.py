@@ -36,7 +36,7 @@ class ContextFormatter(IContextFormatter):
         )
     
     def _format_chunks(self, chunks: List[Dict[str, Any]]) -> str:
-        """Format chunks into context text."""
+        """Format chunks into context text with citation markers."""
         if not chunks:
             return "No relevant context found."
         
@@ -46,19 +46,40 @@ class ContextFormatter(IContextFormatter):
             if not content:
                 continue
             
-            header = self._build_header(chunk.get("metadata", {}), i)
+            metadata = chunk.get("metadata", {})
+            source_name = self._get_source_name(metadata, i)
+            section = metadata.get("section") or metadata.get("h2") or ""
+            source_uri = metadata.get("source_uri", "")
+            
+            # Build header with full citation info
+            header_parts = [f"[{i}] {source_name}"]
+            if section:
+                header_parts.append(f"Section: {section}")
+            if source_uri:
+                header_parts.append(f"URL: {source_uri}")
+            
+            header = " | ".join(header_parts)
             parts.append(f"--- {header} ---\n{content}")
+        
+        # Add citation guide at the end
+        if parts:
+            parts.append("\n[Citation Guide: Use [Source Name] or [1], [2] to cite sources above]")
         
         return "\n\n".join(parts) if parts else "No relevant context found."
     
-    def _build_header(self, metadata: Dict[str, Any], index: int) -> str:
-        """Build header string from metadata."""
-        source_name = (
+    def _get_source_name(self, metadata: Dict[str, Any], index: int) -> str:
+        """Get human-readable source name."""
+        return (
+            metadata.get("title") or
             metadata.get("h1") or
             metadata.get("project_name") or
             metadata.get("source") or
             f"Source {index}"
         )
+    
+    def _build_header(self, metadata: Dict[str, Any], index: int) -> str:
+        """Build header string from metadata."""
+        source_name = self._get_source_name(metadata, index)
         
         section = metadata.get("h2", "")
         if section:
@@ -66,22 +87,24 @@ class ContextFormatter(IContextFormatter):
         return f"[{source_name}]"
     
     def _extract_sources(self, chunks: List[Dict[str, Any]]) -> List[str]:
-        """Extract unique source names from chunks."""
+        """Extract unique source names with URLs from chunks for citations."""
         sources = []
         seen = set()
         
         for i, chunk in enumerate(chunks, 1):
             metadata = chunk.get("metadata", {})
-            source = (
-                metadata.get("h1") or
-                metadata.get("project_name") or
-                metadata.get("source") or
-                f"Source {i}"
-            )
+            source_name = self._get_source_name(metadata, i)
+            source_uri = metadata.get("source_uri", "")
             
-            if source not in seen:
+            # Create citation-friendly source string
+            if source_uri:
+                source = f"{source_name} ({source_uri})"
+            else:
+                source = source_name
+            
+            if source_name not in seen:
                 sources.append(source)
-                seen.add(source)
+                seen.add(source_name)
         
         return sources
     
@@ -151,9 +174,11 @@ class EnhancedContextFormatter(ContextFormatter):
         """Format with image descriptions injected into context."""
         chunks = retrieval_result.get("chunks", [])
         image_refs = retrieval_result.get("images", [])
+        retrieval_mode = retrieval_result.get("retrieval_mode", "hybrid")
         
         # Check relevance based on chunk scores
         max_score = self._get_max_score(chunks)
+        chunk_scores = self._get_all_scores(chunks)
         is_relevant = max_score >= MIN_RELEVANCE_SCORE
         
         logger.info(f"Context relevance check: max_score={max_score:.4f}, threshold={MIN_RELEVANCE_SCORE}, is_relevant={is_relevant}")
@@ -166,6 +191,9 @@ class EnhancedContextFormatter(ContextFormatter):
                 images=[],
                 is_relevant=False,
                 max_score=max_score,
+                retrieval_mode=retrieval_mode,
+                chunk_scores=chunk_scores,
+                chunks=chunks,
             )
         
         context_text = self._format_chunks(chunks)
@@ -184,6 +212,9 @@ class EnhancedContextFormatter(ContextFormatter):
             images=images,
             is_relevant=True,
             max_score=max_score,
+            retrieval_mode=retrieval_mode,
+            chunk_scores=chunk_scores,
+            chunks=chunks,
         )
     
     def _get_max_score(self, chunks: List[Dict[str, Any]]) -> float:
@@ -192,6 +223,10 @@ class EnhancedContextFormatter(ContextFormatter):
             return 0.0
         scores = [chunk.get("score", 0.0) for chunk in chunks]
         return max(scores) if scores else 0.0
+    
+    def _get_all_scores(self, chunks: List[Dict[str, Any]]) -> List[float]:
+        """Get all relevance scores from chunks."""
+        return [chunk.get("score", 0.0) for chunk in chunks]
     
     def _discover_images_from_chunks(self, chunks: List[Dict[str, Any]]) -> List[ResolvedImage]:
         """Auto-discover images based on project names in chunk metadata."""
