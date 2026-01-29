@@ -1,4 +1,5 @@
-# Imports
+"""GitHub Client - API wrapper with retry logic."""
+
 import logging
 import re
 import time
@@ -20,7 +21,6 @@ from isaac_scraper.interfaces import RepositoryInterface
 logger = logging.getLogger(__name__)
 
 
-# Utilities
 def sanitize_log(data) -> str:
     """Extract useful fields from GitHub error, hide tokens."""
     if isinstance(data, dict):
@@ -34,7 +34,6 @@ def sanitize_log(data) -> str:
     return text
 
 
-# Client Implementation
 class GitHubClient(RepositoryInterface):
     """GitHub API client with connection management and retry logic."""
     

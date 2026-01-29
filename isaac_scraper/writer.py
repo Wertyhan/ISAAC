@@ -1,4 +1,5 @@
-# Imports
+"""Result Writer - Atomic file output for crawl results."""
+
 import json
 import logging
 import os
@@ -10,7 +11,6 @@ from isaac_scraper.config import CrawlResult
 logger = logging.getLogger(__name__)
 
 
-# Implementation
 class ResultWriter:
     """Handles writing crawl results to disk with atomic operations."""
     

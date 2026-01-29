@@ -1,25 +1,32 @@
+"""Retriever Service - Hybrid retrieval with reranking."""
+
 import logging
 import re
 from pathlib import Path
 from typing import List, Optional, Dict, Any, Tuple
 
 from flashrank import Ranker, RerankRequest
+from langchain_community.retrievers import BM25Retriever
+from langchain_classic.retrievers import EnsembleRetriever
 from langchain_postgres import PGVector
 from langchain_core.documents import Document
 
-from isaac_api.core.database import get_vector_store
+from isaac_api.core.database import get_vector_store, fetch_all_documents
 from isaac_api.models.schemas import (
     RetrievalResponse,
     DocumentChunk,
     ImageReference,
 )
+from isaac_core.constants import (
+    INITIAL_RECALL_K,
+    FINAL_PRECISION_K,
+    RERANKER_MODEL,
+    VECTOR_WEIGHT,
+    BM25_WEIGHT,
+)
 
 logger = logging.getLogger(__name__)
 
-#Constants
-INITIAL_RECALL_K = 25
-FINAL_PRECISION_K = 5
-RERANKER_MODEL = "ms-marco-MiniLM-L-12-v2"
 FLASHRANK_CACHE_DIR = Path.home() / ".cache" / "flashrank"
 
 IMG_REF_PATTERN = re.compile(
@@ -29,7 +36,7 @@ IMG_REF_PATTERN = re.compile(
 
 
 class _RankerSingleton:
-    #Lazy-loaded singleton to avoid model reload per request.
+    """Lazy-loaded singleton for reranker model."""
 
     _instance: Optional[Ranker] = None
 
@@ -42,11 +49,40 @@ class _RankerSingleton:
 
 
 class RetrieverService:
-    #2-stage retrieval: vector recall → FlashRank reranking.
+    """Hybrid retrieval pipeline with Vector + BM25 and FlashRank reranking."""
 
-    def __init__(self, vector_store: PGVector) -> None:
+    def __init__(
+        self,
+        vector_store: PGVector,
+        documents: Optional[List[Document]] = None,
+    ) -> None:
         self._vector_store = vector_store
         self._ranker = _RankerSingleton.get()
+        self._bm25_retriever: Optional[BM25Retriever] = None
+        self._ensemble_retriever: Optional[EnsembleRetriever] = None
+        
+        if documents:
+            self._initialize_hybrid_retriever(documents)
+
+    def _initialize_hybrid_retriever(self, documents: List[Document]) -> None:
+        """Initialize hybrid retriever with BM25 + vector search."""
+        logger.info(f"Initializing BM25 retriever with {len(documents)} documents")
+        
+        self._bm25_retriever = BM25Retriever.from_documents(
+            documents=documents,
+            k=INITIAL_RECALL_K,
+        )
+        
+        vector_retriever = self._vector_store.as_retriever(
+            search_kwargs={"k": INITIAL_RECALL_K}
+        )
+        
+        self._ensemble_retriever = EnsembleRetriever(
+            retrievers=[vector_retriever, self._bm25_retriever],
+            weights=[VECTOR_WEIGHT, BM25_WEIGHT],
+        )
+        
+        logger.info("Hybrid retriever initialized")
 
     def search(
         self,
@@ -79,9 +115,14 @@ class RetrieverService:
         query: str,
         filter_metadata: Optional[Dict[str, Any]],
     ) -> List[Document]:
-        effective_filter = filter_metadata if filter_metadata else None
-
+        """Fetch candidate documents using hybrid or vector-only search."""
         try:
+            if self._ensemble_retriever and not filter_metadata:
+                results = self._ensemble_retriever.invoke(query)
+                logger.debug(f"Fetched {len(results)} candidates via hybrid search")
+                return results[:INITIAL_RECALL_K]
+            
+            effective_filter = filter_metadata if filter_metadata else None
             results = self._vector_store.similarity_search(
                 query=query,
                 k=INITIAL_RECALL_K,
@@ -89,8 +130,9 @@ class RetrieverService:
             )
             logger.debug(f"Fetched {len(results)} candidates from vector store")
             return results
+            
         except Exception as exc:
-            logger.error(f"Vector search failed: {exc}")
+            logger.error(f"Candidate fetch failed: {exc}")
             raise RuntimeError("Vector search failed") from exc
 
     def _rerank_results(
@@ -174,6 +216,34 @@ class RetrieverService:
         )
 
 
-def get_retriever_service() -> RetrieverService:
-    vector_store = get_vector_store()
-    return RetrieverService(vector_store)
+class _RetrieverServiceSingleton:
+    """Singleton for RetrieverService to avoid reloading BM25 index per request."""
+    
+    _instance: Optional[RetrieverService] = None
+
+    @classmethod
+    def get(cls, force_hybrid: bool = True) -> RetrieverService:
+        if cls._instance is None:
+            vector_store = get_vector_store()
+            documents = None
+            
+            if force_hybrid:
+                try:
+                    documents = fetch_all_documents()
+                    logger.info(f"Loaded {len(documents)} documents for hybrid search")
+                except Exception as exc:
+                    logger.warning(f"Failed to load documents for BM25: {exc}")
+            
+            cls._instance = RetrieverService(vector_store, documents=documents)
+        
+        return cls._instance
+
+    @classmethod
+    def reset(cls) -> None:
+        """Reset singleton instance."""
+        cls._instance = None
+
+
+def get_retriever_service(force_hybrid: bool = True) -> RetrieverService:
+    """Get RetrieverService singleton."""
+    return _RetrieverServiceSingleton.get(force_hybrid=force_hybrid)

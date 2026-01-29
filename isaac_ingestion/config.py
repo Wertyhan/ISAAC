@@ -1,39 +1,14 @@
+"""Ingestion Configuration."""
+
 from pathlib import Path
-from typing import Optional
-from pydantic import Field, SecretStr, field_validator
-from pydantic_settings import BaseSettings
+
+from pydantic import Field, field_validator
+
+from isaac_core.config import BaseConfig
 
 
-# Configuration
-class Config(BaseSettings):
-    
-    gemini_api_key: SecretStr
-    postgres_connection_string: str = Field(
-        default="postgresql+psycopg2://user:pass@localhost:5432/isaac_db"
-    )
-    
-    # Paths
-    raw_data_file: Path = Field(default=Path("data/raw/isaac_raw_data.json"))
-    images_dir: Path = Field(default=Path("data/images"))
-    
-    # Vector Store
-    collection_name: str = "isaac_vectors"
-    embedding_model: str = "models/text-embedding-004"
-    
-    # Gemini Vision
-    vision_model: str = "gemini-2.0-flash"
-    vision_max_retries: int = Field(default=3, ge=0, le=10)
-    vision_retry_delay: float = Field(default=2.0, ge=0.5)
-    
-    # Text Processing
-    chunk_size: int = Field(default=1000, ge=100, le=4000)
-    chunk_overlap: int = Field(default=200, ge=0, le=500)
-    
-    # Network
-    request_timeout: float = Field(default=30.0, ge=5.0)
-    download_max_retries: int = Field(default=3, ge=0, le=10)
-    
-    model_config = {"env_file": ".env", "extra": "ignore"}
+class Config(BaseConfig):
+    """Ingestion pipeline configuration - inherits from BaseConfig."""
     
     @field_validator("raw_data_file")
     @classmethod
@@ -41,16 +16,10 @@ class Config(BaseSettings):
         if not v.exists():
             raise ValueError(f"Raw data file not found: {v}")
         return v
-    
-    @field_validator("images_dir")
-    @classmethod
-    def ensure_images_dir(cls, v: Path) -> Path:
-        v.mkdir(parents=True, exist_ok=True)
-        return v
 
 
-# Models
 class ImageMeta:
+    __slots__ = ("original_url", "local_path", "file_hash", "project_name")
     
     def __init__(
         self,
@@ -73,6 +42,7 @@ class ImageMeta:
 
 
 class ProcessedProject:
+    __slots__ = ("project_name", "category", "processed_content", "images", "source_path")
     
     def __init__(
         self,

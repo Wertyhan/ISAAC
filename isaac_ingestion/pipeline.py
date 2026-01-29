@@ -1,3 +1,5 @@
+"""Ingestion Pipeline - ETL from raw JSON to vector store."""
+
 import json
 import logging
 from pathlib import Path
@@ -21,7 +23,6 @@ from isaac_ingestion.exceptions import (
 logger = logging.getLogger(__name__)
 
 
-# Orchestrator
 class IngestionPipeline:
     """ETL pipeline: JSON -> images -> chunks -> vector store."""
     
@@ -112,7 +113,9 @@ class IngestionPipeline:
     def _process_project(self, project_data: Dict[str, Any]) -> List[Document]:
         metadata = self._extract_project_metadata(project_data)
         content = self._prepare_content(project_data, metadata)
-        return self._text.create_chunks(content, metadata)
+        chunks = self._text.create_chunks(content, metadata)
+        self._stats["chunks_created"] += len(chunks)
+        return chunks
 
     def _extract_project_metadata(self, project_data: Dict[str, Any]) -> Dict[str, Any]:
         return {

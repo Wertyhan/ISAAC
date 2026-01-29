@@ -1,3 +1,5 @@
+"""Image Manager - Download and local storage of images."""
+
 import hashlib
 import logging
 import time
@@ -9,16 +11,13 @@ import requests
 
 from isaac_ingestion.config import Config, ImageMeta
 from isaac_ingestion.exceptions import ImageDownloadError, NetworkTimeoutError
+from isaac_core.constants import SUPPORTED_IMAGE_EXTENSIONS
 
 logger = logging.getLogger(__name__)
 
-
-# Constants
-SUPPORTED_EXTENSIONS = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".svg"}
 CHUNK_SIZE = 8192
 
 
-# Service
 class ImageManager:
     """Image downloading and local storage."""
     
@@ -103,8 +102,9 @@ class ImageManager:
     def _get_extension(self, url: str, content_type: Optional[str]) -> str:
         parsed = urlparse(url)
         path = Path(parsed.path)
-        if path.suffix.lower() in SUPPORTED_EXTENSIONS:
-            return path.suffix.lower()
+        suffix_lower = path.suffix.lower()
+        if suffix_lower in SUPPORTED_IMAGE_EXTENSIONS:
+            return suffix_lower
         
         # Fallback to content type
         if content_type:

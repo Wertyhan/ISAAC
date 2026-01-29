@@ -1,3 +1,5 @@
+"""Text Processor - Cleaning, tokenization, and chunking."""
+
 import logging
 import re
 from typing import List, Dict, Any
@@ -12,8 +14,6 @@ from isaac_ingestion.config import Config
 
 logger = logging.getLogger(__name__)
 
-
-# Constants
 MARKDOWN_HEADERS = [
     ("#", "h1"),
     ("##", "h2"),
@@ -24,7 +24,6 @@ MARKDOWN_HEADERS = [
 IMAGE_TOKEN_TEMPLATE = "\n\n[IMAGE {image_id}]\n**Description:** {description}\n\n"
 
 
-# Service
 class TextProcessor:
     """Text cleaning, image token replacement, and chunking."""
     

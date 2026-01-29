@@ -1,3 +1,5 @@
+"""Ingestion CLI - Command line interface for running the pipeline."""
+
 import sys
 import logging
 import argparse
@@ -16,11 +18,9 @@ from isaac_ingestion.exceptions import (
     GeminiAPIError,
 )
 
-# Logger
 logger = logging.getLogger(__name__)
 
 
-# Helpers
 def _build_overrides(args: argparse.Namespace) -> dict:
     overrides = {}
     if args.input:
@@ -45,7 +45,6 @@ def _create_pipeline(config: Config) -> IngestionPipeline:
     )
 
 
-# Execution
 def main() -> int:
     logging.basicConfig(
         level=logging.INFO,

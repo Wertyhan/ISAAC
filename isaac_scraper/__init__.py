@@ -1,4 +1,3 @@
-# Imports
 from isaac_scraper.config import Config, CrawlResult
 from isaac_scraper.scraper import GitScraper, CrawlOrchestrator
 from isaac_scraper.github_client import GitHubClient, sanitize_log

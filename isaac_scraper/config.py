@@ -1,12 +1,12 @@
-# Imports
+"""Scraper Configuration - Settings and models for GitHub scraping."""
+
 from typing import Optional, FrozenSet
 from pydantic import BaseModel, Field, field_validator, SecretStr
 from pydantic_settings import BaseSettings
 
 
-# Configuration
 class Config(BaseSettings):
-    """Scraper settings."""
+    """Scraper configuration."""
     
     github_token: SecretStr
     repo_name: str = "donnemartin/system-design-primer"
@@ -26,12 +26,13 @@ class Config(BaseSettings):
     @classmethod
     def validate_repo_format(cls, v: str) -> str:
         if v.count("/") != 1:
-            raise ValueError("Format: owner/repo")
+            raise ValueError("Invalid repository format. Expected: owner/repo")
         return v
 
 
-# Models
 class CrawlResult(BaseModel):
+    """Result from crawling a single project directory."""
+    
     category: str
     project_name: str
     title: Optional[str] = None

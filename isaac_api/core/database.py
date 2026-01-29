@@ -1,3 +1,5 @@
+"""Database - Vector store connection management."""
+
 import logging
 from typing import Optional
 
@@ -10,7 +12,7 @@ logger = logging.getLogger(__name__)
 
 
 class VectorStoreManager:
-    #Singleton manager for PGVector connections.
+    """Singleton manager for PGVector connections."""
     
     _instance: Optional["VectorStoreManager"] = None
     _vector_store: Optional[PGVector] = None
@@ -29,7 +31,7 @@ class VectorStoreManager:
         return self._vector_store
 
     def _create_store(self) -> PGVector:
-        logger.info(f"Initializing vector store connection to '{self._settings.collection_name}'")
+        logger.info(f"Initializing vector store: {self._settings.collection_name}")
 
         try:
             embeddings = GoogleGenerativeAIEmbeddings(
@@ -44,7 +46,7 @@ class VectorStoreManager:
                 use_jsonb=True,
             )
 
-            logger.info("Vector store connection established successfully")
+            logger.info("Vector store connection established")
             return vector_store
 
         except Exception as e:
@@ -61,13 +63,45 @@ _manager: Optional[VectorStoreManager] = None
 
 
 def get_vector_store() -> PGVector:
+    """Get vector store singleton."""
     global _manager
     if _manager is None:
         _manager = VectorStoreManager()
     return _manager.get_store()
 
 
+def fetch_all_documents() -> list:
+    """Fetch all documents from PGVector store for BM25 indexing."""
+    from langchain_core.documents import Document
+    from sqlalchemy import text, create_engine
+    
+    settings = get_settings()
+    engine = create_engine(settings.postgres_connection_string)
+    
+    query = text("""
+        SELECT e.document, e.cmetadata
+        FROM langchain_pg_embedding e
+        JOIN langchain_pg_collection c ON e.collection_id = c.uuid
+        WHERE c.name = :collection_name
+    """)
+    
+    documents = []
+    with engine.connect() as conn:
+        result = conn.execute(query, {"collection_name": settings.collection_name})
+        for row in result:
+            documents.append(
+                Document(
+                    page_content=row.document,
+                    metadata=row.cmetadata or {},
+                )
+            )
+    
+    logger.info(f"Fetched {len(documents)} documents for BM25 indexing")
+    return documents
+
+
 def close_vector_store() -> None:
+    """Close vector store connection."""
     global _manager
     if _manager is not None:
         _manager.close()
