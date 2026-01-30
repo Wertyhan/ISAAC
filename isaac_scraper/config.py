@@ -11,7 +11,7 @@ class Config(BaseSettings):
     github_token: SecretStr
     repo_name: str = "donnemartin/system-design-primer"
     start_path: str = "solutions/system_design"
-    output_file: str = "isaac_raw_data.json"
+    output_file: str = "data/raw/isaac_raw_data.json"
     branch: str = "master"
     max_depth: int = Field(default=10, ge=1, le=50)
     max_retries: int = Field(default=3, ge=0, le=10)
