@@ -55,10 +55,15 @@ class GenerationService:
         "what is this", "what's this", "what does this show", "describe",
         "explain this", "tell me about this", "what's on", "what is on",
         "analyze this", "breakdown", "overview", "summary",
+        "what is depicted", "what's depicted", "depicted in", "shows",
+        "what is in the", "what's in the", "diagram i provided", "image i provided",
+        "my diagram", "my image", "this diagram", "this image",
+        "the diagram", "the image", "uploaded", "attached",
     ])
     
     # Keywords that indicate the query is about system architecture/software
     _ARCHITECTURE_KEYWORDS = frozenset([
+        # Core architecture terms
         "architecture", "system", "design", "microservice", "database", "api",
         "scalability", "cache", "queue", "load balancer", "backend", "frontend",
         "distributed", "cloud", "server", "service", "pattern", "infrastructure",
@@ -70,23 +75,50 @@ class GenerationService:
         "authentication", "authorization", "oauth", "jwt", "security",
         "monitoring", "logging", "metrics", "alerting", "observability",
         "ci/cd", "devops", "agile", "scrum", "sprint", "mvp",
+        # Application types and building verbs
         "app", "application", "platform", "software", "tech", "technology",
+        "build", "create", "develop", "implement", "scale", "handle",
+        # Real-time and event-driven
         "delivery", "order", "payment", "notification", "real-time", "realtime",
+        "event", "stream", "async", "asynchronous", "webhook", "push",
+        # Industry applications (triggers architecture discussion)
         "taxi", "ride", "food", "e-commerce", "ecommerce", "marketplace",
         "twitter", "instagram", "facebook", "netflix", "spotify", "airbnb",
-        "booking", "amazon", "uber", "bolt", "like", "similar",
+        "booking", "amazon", "uber", "bolt", "glovo", "doordash", "deliveroo",
+        "wolt", "rappi", "zomato", "swiggy", "grubhub", "postmates",
+        "like", "similar", "clone", "style",
+        # High-volume processing
+        "millions", "billion", "high volume", "traffic", "concurrent", "users",
+        "requests", "per second", "rps", "tps", "qps",
     ])
     
     # Keywords that indicate completely off-topic queries (NOT about tech/software)
     _OFFTOPIC_KEYWORDS = frozenset([
+        # Automotive
         "volkswagen", "passat", "bmw", "mercedes", "audi", "toyota", "honda",
         "ford", "chevrolet", "nissan", "mazda", "hyundai", "kia", "engine",
         "horsepower", "transmission", "sedan", "suv", "truck", "motorcycle",
         "car model", "vehicle specs",
+        # Cooking/Food
         "recipe", "cook", "bake", "ingredient", "cuisine", "chef", "kitchen",
+        "chocolate cake", "best dish", "how to make food",
+        # Sports
         "football score", "basketball game", "soccer match", "tennis", "golf", "swimming",
-        "actor biography", "actress", "singer", "band concert",
+        "world cup", "fifa", "nba", "nfl", "olympics", "championship", "tournament score",
+        "who won", "match result",
+        # Entertainment
+        "actor biography", "actress", "singer", "band concert", "movie review",
+        "celebrity", "grammy", "oscar", "emmy",
+        # General knowledge/trivia
         "weather forecast", "horoscope", "lottery numbers",
+        "roman empire", "history of", "ancient", "medieval",
+        # Consumer electronics (non-architecture)
+        "iphone specs", "new iphone", "phone specs", "laptop specs", "gaming console",
+        "product review", "which phone", "best smartphone",
+        # Medical/Health
+        "symptoms", "diagnosis", "treatment for", "cure for", "medicine",
+        # Legal/Financial
+        "lawsuit", "legal advice", "stock price", "crypto price", "investment advice",
     ])
     
     def __init__(
@@ -215,8 +247,8 @@ class GenerationService:
             return True
         
         # Very short queries with image = probably just wants description
-        # e.g., "what is this?", "explain", "describe"
-        if len(query_lower.split()) <= 5:
+        # e.g., "what is this?", "explain", "describe", "what is depicted..."
+        if len(query_lower.split()) <= 10:
             return True
         
         return False
@@ -266,12 +298,69 @@ class GenerationService:
         query_lower = query.lower()
         return any(kw in query_lower for kw in self._IMAGE_KEYWORDS)
     
-    def _build_search_query(self, query: str, image_analysis: Optional[str]) -> str:
-        """Build search query, enhancing with image analysis if available."""
-        if not image_analysis:
+    # Query expansion mappings for better semantic search
+    _QUERY_EXPANSION_MAP = {
+        # Food/delivery apps -> relevant architecture patterns
+        ("food", "delivery", "glovo", "doordash", "uber eats", "wolt"): [
+            "real-time order processing", "microservices architecture",
+            "message queue Kafka RabbitMQ", "notification service",
+            "geolocation tracking", "payment processing", "high availability",
+        ],
+        # E-commerce -> relevant patterns
+        ("ecommerce", "e-commerce", "amazon", "shop", "marketplace"): [
+            "product catalog", "shopping cart", "payment gateway",
+            "inventory management", "order management", "recommendation engine",
+        ],
+        # Social media -> relevant patterns  
+        ("twitter", "social", "timeline", "feed", "post"): [
+            "fan-out", "timeline", "news feed", "follower", "notification",
+            "caching Redis", "message queue",
+        ],
+        # Real-time systems
+        ("real-time", "realtime", "live", "instant"): [
+            "WebSocket", "message queue", "event-driven", "pub/sub",
+            "low latency", "streaming",
+        ],
+        # High scale
+        ("millions", "scale", "high volume", "traffic"): [
+            "horizontal scaling", "load balancer", "caching",
+            "database sharding", "CDN", "autoscaling",
+        ],
+        # URL shortener
+        ("url shortener", "bit.ly", "short link", "shorten"): [
+            "hash function", "base62 encoding", "key-value store",
+            "redirect", "analytics",
+        ],
+    }
+    
+    def _expand_query(self, query: str) -> str:
+        """Expand query with relevant architecture concepts for better retrieval."""
+        query_lower = query.lower()
+        expansions = []
+        
+        for keywords, concepts in self._QUERY_EXPANSION_MAP.items():
+            if any(kw in query_lower for kw in keywords):
+                expansions.extend(concepts)
+        
+        if not expansions:
             return query
-        if query.strip():
-            return f"{query}\n\nRelated context: {image_analysis[:500]}"
+        
+        # Deduplicate and limit expansions
+        unique_expansions = list(dict.fromkeys(expansions))[:8]
+        expansion_text = ", ".join(unique_expansions)
+        
+        logger.info(f"Query expanded with concepts: {expansion_text}")
+        return f"{query}\n\nRelevant architecture concepts: {expansion_text}"
+    
+    def _build_search_query(self, query: str, image_analysis: Optional[str]) -> str:
+        """Build search query, enhancing with image analysis and concept expansion."""
+        # First expand the query with relevant concepts
+        expanded_query = self._expand_query(query)
+        
+        if not image_analysis:
+            return expanded_query
+        if expanded_query.strip():
+            return f"{expanded_query}\n\nRelated context: {image_analysis[:500]}"
         return image_analysis
     
     async def process_image_similarity(

@@ -13,7 +13,7 @@ FINAL_PRECISION_K = 5
 # Minimum relevance score threshold for context to be considered relevant
 # FlashRank reranker scores typically range from 0 to 1
 # Set very low to allow model to decide relevance based on content
-MIN_RELEVANCE_SCORE = 0.001
+MIN_RELEVANCE_SCORE = 0.0001
 
 RERANKER_MODEL = "ms-marco-MiniLM-L-12-v2"
 

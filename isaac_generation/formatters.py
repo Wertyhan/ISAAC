@@ -41,6 +41,8 @@ class ContextFormatter(IContextFormatter):
             return "No relevant context found."
         
         parts = []
+        source_list = []  # Track sources for citation reference
+        
         for i, chunk in enumerate(chunks[:self._config.top_k_chunks], 1):
             content = chunk.get("content", "").strip()
             if not content:
@@ -48,22 +50,21 @@ class ContextFormatter(IContextFormatter):
             
             metadata = chunk.get("metadata", {})
             source_name = self._get_source_name(metadata, i)
-            section = metadata.get("section") or metadata.get("h2") or ""
-            source_uri = metadata.get("source_uri", "")
-            
-            # Build header with full citation info
-            header_parts = [f"[{i}] {source_name}"]
-            if section:
-                header_parts.append(f"Section: {section}")
-            if source_uri:
-                header_parts.append(f"URL: {source_uri}")
-            
-            header = " | ".join(header_parts)
-            parts.append(f"--- {header} ---\n{content}")
+
+            parts.append(f"=== SOURCE [{i}]: {source_name} ===\n{content}")
+            source_list.append(f"[{i}] {source_name}")
         
-        # Add citation guide at the end
+        # Add explicit citation guide at the end
         if parts:
-            parts.append("\n[Citation Guide: Use [Source Name] or [1], [2] to cite sources above]")
+            citation_guide = "\n\n" + "="*50 + "\n"
+            citation_guide += "CITATION REQUIREMENTS:\n"
+            citation_guide += "- Cite EVERY technical claim using [1], [2], etc.\n"
+            citation_guide += "- Available sources:\n"
+            for src in source_list:
+                citation_guide += f"  {src}\n"
+            citation_guide += "- End response with: **Sources:** [list used sources]\n"
+            citation_guide += "="*50
+            parts.append(citation_guide)
         
         return "\n\n".join(parts) if parts else "No relevant context found."
     

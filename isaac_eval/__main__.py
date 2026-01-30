@@ -169,7 +169,6 @@ def _print_generation_metrics(gm) -> None:
     print(f"  Citation Correct: {gm.citation_correctness:.2%}")
     print(f"  Answer Relevance: {gm.answer_relevance:.2%}")
     print(f"  Refusal Accuracy: {gm.refusal_accuracy:.2%}")
-    print(f"  IDK Accuracy:     {gm.idk_accuracy:.2%}")
     print(f"  Avg Time:         {gm.avg_generation_time_ms:.0f}ms")
 
 

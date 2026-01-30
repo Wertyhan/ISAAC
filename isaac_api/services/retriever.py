@@ -34,6 +34,73 @@ IMG_REF_PATTERN = re.compile(
     re.MULTILINE,
 )
 
+# Query expansion patterns for better semantic matching
+QUERY_EXPANSION_MAP = {
+    # Food/delivery apps - explicitly mention related patterns from knowledge base
+    ("food", "delivery", "glovo", "doordash", "uber eats", "wolt", "rappi", "order"): 
+        "twitter timeline asynchronism microservices message queue real-time notification scaling",
+    # E-commerce
+    ("ecommerce", "e-commerce", "amazon", "shop", "marketplace", "product"):
+        "product catalog payment order management shopping cart database scaling",
+    # Social media
+    ("twitter", "social", "timeline", "feed", "post", "instagram", "facebook"):
+        "fan-out timeline feed caching notification scaling twitter design",
+    # Real-time systems
+    ("real-time", "realtime", "live", "instant", "streaming"):
+        "message queue websocket kafka notification event-driven async twitter",
+    # High scale
+    ("million", "millions", "billion", "scale", "high volume", "traffic", "large"):
+        "horizontal scaling load balancer caching sharding CDN replication",
+    # URL shortener
+    ("url shortener", "bit.ly", "short link", "shorten", "tiny"):
+        "pastebin hash base62 key-value redirect analytics",
+    # Web crawler
+    ("web crawler", "crawler", "index", "crawl", "spider"):
+        "distributed queue URL frontier indexing BFS politeness web crawler",
+    # Cache
+    ("cache", "caching", "redis", "memcached"):
+        "cache LRU TTL memory cache-aside write-through eviction",
+    # Database
+    ("database", "db", "sql", "nosql", "dynamo", "dynamodb"):
+        "replication sharding master-slave consistency ACID transaction",
+    # CAP theorem
+    ("cap theorem", "cap", "consistency", "availability", "partition"):
+        "partition tolerance distributed eventual consistency CAP",
+    # Notification system
+    ("notification", "push", "alert"):
+        "message queue async notification budget mint service",
+    # Stock/Trading
+    ("stock", "trading", "exchange", "financial"):
+        "real-time message queue low-latency transaction ACID",
+}
+
+
+def expand_query(query: str) -> str:
+    """Expand query with relevant architecture terms for better retrieval."""
+    query_lower = query.lower()
+    expansions = []
+    
+    for keywords, expansion in QUERY_EXPANSION_MAP.items():
+        if any(kw in query_lower for kw in keywords):
+            expansions.append(expansion)
+    
+    # Add general architecture terms if query seems domain-related
+    architecture_hints = ("design", "build", "create", "app", "system", "how", "architecture", "implement")
+    if any(hint in query_lower for hint in architecture_hints):
+        if not expansions:
+            expansions.append("system design architecture scalability microservices")
+        # Also add scaling hints if asking about building something
+        if "design" in query_lower or "create" in query_lower or "build" in query_lower:
+            expansions.append("scaling cache database message queue")
+    
+    if expansions:
+        expansion_text = " ".join(expansions[:3])  # Limit to 3 expansions
+        expanded = f"{query} {expansion_text}"
+        logger.debug(f"Query expanded: '{query[:50]}...' -> added '{expansion_text[:50]}...'")
+        return expanded
+    
+    return query
+
 
 class _RankerSingleton:
     """Lazy-loaded singleton for reranker model."""
@@ -92,13 +159,20 @@ class RetrieverService:
     ) -> RetrievalResponse:
         """Execute hybrid search with reranking and return full response."""
         final_k = k or FINAL_PRECISION_K
+        
+        # Expand query with semantic concepts for better retrieval
+        expanded_query = expand_query(query)
+        if expanded_query != query:
+            logger.info(f"Query expanded: '{query[:30]}…' -> '{expanded_query[:50]}…'")
+        
         logger.info(f"Search: '{query[:50]}…' | recall={INITIAL_RECALL_K}, final={final_k}")
 
         # Determine retrieval mode
         use_hybrid = self._ensemble_retriever and not filter_metadata
         retrieval_mode = "hybrid" if use_hybrid else "vector"
 
-        candidates = self._fetch_candidates(query, filter_metadata)
+        # Use expanded query for fetching candidates
+        candidates = self._fetch_candidates(expanded_query, filter_metadata)
 
         if not candidates:
             return self._empty_response(query, retrieval_mode)

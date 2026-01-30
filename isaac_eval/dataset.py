@@ -161,10 +161,7 @@ def create_default_dataset() -> EvaluationDataset:
         description="ISAAC System Design Evaluation Dataset - Based on PRD examples and system-design-primer content"
     )
     
-    # ============================================
-    # TEXT-TO-ARCHITECTURE QUERIES (Easy)
-    # ============================================
-    
+    # Easy queries
     dataset.add_query(EvalQuery(
         query_id="T001",
         query="What is a CDN and how does it improve website performance?",
@@ -215,10 +212,7 @@ def create_default_dataset() -> EvaluationDataset:
         category="Databases",
     ))
     
-    # ============================================
-    # TEXT-TO-ARCHITECTURE QUERIES (Medium)
-    # ============================================
-    
+    # Medium queries
     dataset.add_query(EvalQuery(
         query_id="T006",
         query="I want to create a food delivery app like Glovo that processes many orders in real time. What architecture should I use?",
@@ -293,10 +287,7 @@ def create_default_dataset() -> EvaluationDataset:
         category="Real-time Systems",
     ))
     
-    # ============================================
-    # TEXT-TO-ARCHITECTURE QUERIES (Hard)
-    # ============================================
-    
+    # Hard queries
     dataset.add_query(EvalQuery(
         query_id="T013",
         query="Design a distributed key-value store like DynamoDB with high availability",
@@ -327,10 +318,7 @@ def create_default_dataset() -> EvaluationDataset:
         category="Financial Systems",
     ))
     
-    # ============================================
-    # IMAGE ANALYSIS / SIMILARITY QUERIES
-    # ============================================
-    
+    # Image queries
     dataset.add_query(EvalQuery(
         query_id="I001",
         query="Show me architecture diagrams for scaling a web application",
@@ -362,10 +350,7 @@ def create_default_dataset() -> EvaluationDataset:
         category=CAT_DATABASES,
     ))
     
-    # ============================================
-    # GROUNDED KNOWLEDGE QUERIES
-    # ============================================
-    
+    # Grounded knowledge queries
     dataset.add_query(EvalQuery(
         query_id="G001",
         query="What are the trade-offs of using microservices vs monolithic architecture?",
@@ -396,10 +381,7 @@ def create_default_dataset() -> EvaluationDataset:
         category=CAT_SCALING,
     ))
     
-    # ============================================
-    # OFF-TOPIC QUERIES (Should Refuse)
-    # ============================================
-    
+    # Off-topic queries (should refuse)
     dataset.add_query(EvalQuery(
         query_id="O001",
         query="What is the best recipe for chocolate cake?",
@@ -440,10 +422,7 @@ def create_default_dataset() -> EvaluationDataset:
         category="Off-topic",
     ))
     
-    # ============================================
-    # EDGE CASES / "I DON'T KNOW" QUERIES
-    # ============================================
-    
+    # Edge case queries
     dataset.add_query(EvalQuery(
         query_id="E001",
         query="How does Spotify's machine learning recommendation engine work internally?",
@@ -466,10 +445,7 @@ def create_default_dataset() -> EvaluationDataset:
         notes="Proprietary system details not available",
     ))
     
-    # ============================================
-    # MULTIMODAL / PRD EXAMPLE QUERIES
-    # ============================================
-    
+    # Multimodal queries
     dataset.add_query(EvalQuery(
         query_id="M001",
         query="How does a polyglot database strategy work for high-volume traffic?",

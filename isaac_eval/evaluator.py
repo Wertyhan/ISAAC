@@ -47,20 +47,12 @@ def _load_image_registry_map() -> Dict[str, str]:
 @dataclass
 class EvaluationReport:
     """Complete evaluation report."""
-    
-    # Metadata
     timestamp: str = field(default_factory=lambda: datetime.now().isoformat())
     config: Dict[str, Any] = field(default_factory=dict)
     dataset_stats: Dict[str, Any] = field(default_factory=dict)
-    
-    # Metrics
     retrieval_metrics: Optional[RetrievalMetrics] = None
     generation_metrics: Optional[GenerationMetrics] = None
-    
-    # Error analysis
     error_analysis: Dict[str, Any] = field(default_factory=dict)
-    
-    # Recommendations
     recommendations: List[str] = field(default_factory=list)
     
     def to_dict(self) -> Dict[str, Any]:
@@ -372,13 +364,18 @@ class ISAACEvaluator:
                 # Extract citations from response
                 citations = self._extract_citations(full_response)
                 
-                # Get context from retrieval
+                # Get context from retrieval - format it with source markers for citation validation
                 retrieval = retrieval_lookup.get(query.query_id)
                 context = ""
-                if retrieval:
-                    context = "\n".join(
-                        c.get("content", "") for c in retrieval.retrieved_chunks
-                    )
+                if retrieval and retrieval.retrieved_chunks:
+                    # Format context with SOURCE [N] markers to match citation validation
+                    context_parts = []
+                    for i, chunk in enumerate(retrieval.retrieved_chunks, 1):
+                        content = chunk.get("content", "")
+                        metadata = chunk.get("metadata", {})
+                        source_name = metadata.get("title") or metadata.get("h1") or metadata.get("project_name") or f"Source {i}"
+                        context_parts.append(f"=== SOURCE [{i}]: {source_name} ===\n{content}")
+                    context = "\n\n".join(context_parts)
                 
                 result = GenerationResult(
                     query_id=query.query_id,
@@ -411,7 +408,16 @@ class ISAACEvaluator:
         """Extract citations from response text."""
         citations = []
         
-        # Pattern 1: [Source Name]
+        # Pattern 1: Numbered citations [1], [2], etc.
+        numbered_pattern = r'\[(\d+)\]'
+        numbered_matches = re.findall(numbered_pattern, response)
+        # Count unique numbered citations (valid if they reference source numbers)
+        if numbered_matches:
+            unique_numbers = set(numbered_matches)
+            # Add as "Source N" format for validation
+            citations.extend(f"source_{num}" for num in unique_numbers)
+        
+        # Pattern 2: Named citations [Source Name]
         bracket_pattern = r'\[([^\]]+)\]'
         matches = re.findall(bracket_pattern, response)
         citations.extend(
@@ -419,13 +425,13 @@ class ISAACEvaluator:
             if not match.isdigit() and len(match) > 2
         )
         
-        # Pattern 2: References section
-        ref_markers = ["**References:**", "Sources:"]
+        # Pattern 3: References/Sources section
+        ref_markers = ["**Sources:**", "**References:**", "Sources:"]
         for marker in ref_markers:
             if marker in response:
                 ref_section = response.split(marker)[-1]
-                ref_items = re.findall(r'[|\-]\s*([^|\n]+)', ref_section)
-                citations.extend(item.strip() for item in ref_items if item.strip())
+                ref_items = re.findall(r'[\-\*]\s*([^|\n\-\*]+)', ref_section)
+                citations.extend(item.strip() for item in ref_items if item.strip() and len(item.strip()) > 3)
                 break
         
         return list(set(citations))

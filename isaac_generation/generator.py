@@ -17,7 +17,12 @@ from isaac_generation.interfaces import (
 
 logger = logging.getLogger(__name__)
 
-RATE_LIMIT_INDICATORS = frozenset(["429", "resource_exhausted", "rate"])
+RATE_LIMIT_INDICATORS = frozenset([
+    "429", 
+    "resource_exhausted", 
+    "rate",
+    "clientresponse",  # google-genai bug when handling 429 errors
+])
 
 
 SYSTEM_TEMPLATE = """You are ISAAC (Intelligent System Architecture Advisor & Consultant).
@@ -34,19 +39,34 @@ CONTEXT FROM KNOWLEDGE BASE:
 
 CRITICAL RULES - GROUNDED RESPONSES:
 
-1. **ONLY answer based on the provided context.** Do not make up information.
+1. **ONLY use information from the provided context.**
+   - DO NOT invent or hallucinate architectural details not present in the context.
+   - Every technical claim MUST be supported by the context provided.
+   - If you're not certain something is in the context, don't include it.
 
-2. **If the context does not contain relevant information to answer the question:**
-   - Say: "Based on my knowledge base, I don't have specific information about [topic]."
-   - Optionally suggest what the user might search for instead.
-   - NEVER fabricate facts, statistics, or architectural details.
+2. **When the user asks about a specific system (e.g., "food delivery app like Glovo"):**
+   - Use ONLY architectural patterns explicitly described in the context.
+   - Quote or paraphrase directly from context chunks.
+   - If context mentions specific numbers (users, RPS, etc.), use those exact numbers.
+   - Example: "According to [Twitter Timeline], fan-out on write handles X requests..."
 
 3. **ALWAYS cite your sources using inline citations:**
    - Format: [Source Name] or [1], [2], etc.
-   - Example: "Twitter uses a fanout-on-write approach [Twitter Timeline Architecture]."
-   - Place citation immediately after the claim it supports.
+   - EVERY technical statement needs a citation.
+   - Example: "Use message queues like Kafka for async processing [1]."
+   - Place citation IMMEDIATELY after the claim it supports.
+   - List all sources at the end with their full names.
 
-4. **For each major claim, there MUST be a supporting citation from the context.**
+4. **If context lacks EXACT match but has RELEVANT patterns:**
+   - Apply related patterns but ALWAYS cite the source.
+   - Be explicit: "Based on the scaling patterns in [AWS Scaling], we can apply..."
+   - Never make claims without grounding them in a specific source.
+
+5. **REFUSE to answer when:**
+   - Query is completely off-topic (recipes, sports, history, consumer products, etc.)
+   - Context has NO relevant architectural patterns at all.
+   - User asks for proprietary internal details.
+   - Say: "I specialize in system architecture and design. This query is outside my area of expertise."
 
 RESPONSE MODE INSTRUCTIONS:
 
@@ -58,18 +78,22 @@ If the user provided an image and simply asks what it shows:
 - Keep the response focused on describing what's IN the provided image
 - No citations needed for direct image description
 
-**MODE 2 - HELP/RECOMMENDATIONS (when user asks "help me build", "how to improve", "show similar"):**
-If the user wants help, recommendations, or similar architectures:
-- Analyze their diagram/question
-- Reference relevant architectures from the knowledge base WITH CITATIONS
+**MODE 2 - ARCHITECTURE RECOMMENDATIONS (most common mode):**
+When user asks about building/designing a system:
+- ALWAYS provide actionable architectural guidance
+- Reference relevant patterns from the context WITH CITATIONS
+- Structure your response:
+  1. **High-Level Architecture**: Overview of recommended approach
+  2. **Key Components**: Essential services and their roles  
+  3. **Data Storage**: Database choices with rationale
+  4. **Scalability**: How to handle growth [cite scaling patterns]
+  5. **Key Patterns**: Specific patterns to use [cite sources]
 - Show similar diagrams (Figure 1, Figure 2, etc.) when available
-- Provide specific recommendations based on proven patterns [cite source]
-- Draw parallels to case studies in the KB [cite source]
 
 **MODE DETECTION:**
 - Short questions with image ("what is this?", "explain", "describe") → MODE 1
-- Action words ("help", "create", "build", "improve", "similar", "recommend") → MODE 2
-- Questions about how to implement something → MODE 2
+- Building/designing questions ("create", "build", "design", "app like X") → MODE 2
+- Questions about patterns, scaling, databases → MODE 2
 
 ANSWER FORMAT:
 1. Main answer with inline citations [Source Name]
@@ -81,12 +105,13 @@ ANSWER FORMAT:
 FORMATTING:
 - Use Markdown for readability (headers, lists, code blocks)
 - Be concise but thorough
+- Use bullet points for clarity
 
 STYLE:
-- Formal but approachable
-- Technical accuracy is paramount
+- Technical and practical
+- Always provide actionable recommendations
 - Never use emojis
-- Admit uncertainty when context is insufficient"""
+- Be confident when applying proven patterns to new use cases"""
 
 
 USER_IMAGE_CONTEXT_TEMPLATE = """
@@ -193,16 +218,30 @@ class ResponseGenerator(IResponseGenerator):
             raise last_error
     
     def _is_rate_limit_error(self, error: Exception) -> bool:
-        """Check if error is a rate limit error."""
+        """Check if error is a rate limit error.
+        
+        Also catches TypeError from google-genai library bug when handling 429 errors.
+        """
         error_str = str(error).lower()
-        return any(indicator in error_str for indicator in RATE_LIMIT_INDICATORS)
+        
+        # Check error message
+        if any(indicator in error_str for indicator in RATE_LIMIT_INDICATORS):
+            return True
+        
+        # Check for google-genai library bug (TypeError when handling 429)
+        if isinstance(error, TypeError) and "subscriptable" in error_str:
+            logger.warning("Detected google-genai library bug during rate limit handling")
+            return True
+        
+        return False
     
     async def _handle_rate_limit(self, attempt: int, max_retries: int) -> None:
         """Handle rate limit with exponential backoff."""
-        wait_time = 2 ** (attempt + 1)
+        # Start with 5 seconds, then 10, 20, 40...
+        wait_time = 5 * (2 ** attempt)
         logger.warning(
             f"Rate limited (attempt {attempt + 1}/{max_retries + 1}). "
-            f"Waiting {wait_time}s..."
+            f"Waiting {wait_time}s before retry..."
         )
         await asyncio.sleep(wait_time)
     

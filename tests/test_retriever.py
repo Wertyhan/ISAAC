@@ -87,22 +87,20 @@ class TestRetrieverServiceSearch:
 
         retriever.search("cache invalidation strategies", filter_metadata=filters)
 
-        mock_vector_store.similarity_search.assert_called_once_with(
-            query="cache invalidation strategies",
-            k=INITIAL_RECALL_K,
-            filter=filters,
-        )
+        # Query expansion may modify the query, so we check the filter is passed correctly
+        call_args = mock_vector_store.similarity_search.call_args
+        assert call_args.kwargs.get("filter") == filters
+        assert call_args.kwargs.get("k") == INITIAL_RECALL_K
 
     def test_search_converts_empty_filter_to_none(self, retriever, mock_vector_store, sample_documents):
         mock_vector_store.similarity_search.return_value = sample_documents
 
         retriever.search("database sharding patterns", filter_metadata={})
 
-        mock_vector_store.similarity_search.assert_called_once_with(
-            query="database sharding patterns",
-            k=INITIAL_RECALL_K,
-            filter=None,
-        )
+        # Query expansion may modify the query, so we check the filter is None
+        call_args = mock_vector_store.similarity_search.call_args
+        assert call_args.kwargs.get("filter") is None
+        assert call_args.kwargs.get("k") == INITIAL_RECALL_K
 
 
 class TestRetrieverServiceReranking:

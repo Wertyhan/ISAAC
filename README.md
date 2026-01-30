@@ -1,188 +1,177 @@
-# Product Requirements Document (POC): ISAAC
+# ISAAC: Intelligent System Architecture Advisor & Consultant
 
-**Intelligent System Architecture Advisor & Consultant**
+## Overview
 
-### [Small presentation](https://www.canva.com/design/DAG8mbRpjsg/o1aAdXqiRuFNml1KU6YWsA/edit?utm_content=DAG8mbRpjsg&utm_campaign=designshare&utm_medium=link2&utm_source=sharebutton)
+**ISAAC** is a **Multimodal Retrieval-Augmented Generation (RAG)** system designed to assist software engineers and architects in designing scalable systems. Unlike standard text-only assistants, ISAAC retrieves and reasons over both **technical documentation** and **architectural diagrams** (images) to provide grounded, visually-supported answers.
 
-## 1. Problem & Users
-
-- **Target User:** "Vibe Coders," Startup Engineers, and Technical Leads.
-- **Problem:** Engineers often ask LLMs for system design help but receive "hallucinated" answers or generic text without visual context. While code generation is easy, designing scalable architecture remains difficult.
-- **Value Proposition:** ISAAC helps engineers design scalable systems by combining grounded architectural knowledge with real diagrams, ensuring answers are based on reality, not hallucinations.
-
-## 2. MVP Scope
-
-**In Scope (Core Features):**
-
-- **Multimodal Ingestion:** Ingesting technical documents and architectural diagrams.
-- **Structure-based Retrieval:** The system retrieves structured architecture including data flows, services, and responsibilities.
-- **Grounded Generation:** Answers must be grounded in retrieved context to eliminate hallucinations.
-- **Visual Context:** Retrieving and displaying actual diagrams relevant to the user's query.
-
-**Out of Scope (for POC):**
-
-- Real-time web browsing (relies on ingested corpus).
-- Autonomous agentic planning.
-
-## 3. Content & Data
-
-- **Data Sources:** Real system architecture case studies and diagrams (e.g., Glovo, high-scale marketplaces).
-- **Corpus Strategy:** A curated set of architecture descriptions and their corresponding visual diagrams.
-- **Data Relationship:** Text descriptions linked to specific visual diagrams (e.g., Kafka implementation for delivery apps).
-
-## 4. Example Queries
-
-**Text-to-Architecture:**
-
-1. "I want to create a food delivery app (e.g., Glovo) that will process many orders in real time. What architecture and database should I choose?".
-2. "Show me the microservices diagram for a courier tracking system".
-3. "How does a polyglot database strategy work for high-volume traffic?".
-
-**Multimodal/Image Context:**
-
-4. "Explain the data flow in this architecture diagram".
-5. "What are the trade-offs of the system shown in this image?".
-
-## 5. Success Metrics
-
-- **Hit Rate (Recall@5):** For a set of 20 architecture questions, is the correct "gold standard" document/diagram in the top 5 results?.
-- **Image Relevance Score:** For visual queries, does the top-retrieved image actually depict the requested system?.
-- **Faithfulness:** The answer must not contain information unsupported by the retrieved chunks.
-- **Refusal Accuracy:** The system must successfully refuse 100% of out-of-domain queries.
-- **Latency:** Target < 8 seconds for the full cycle (Retrieval + Generation) on local testing.
-
-## 6. UI Expectations
-
-- **Vibecoded UI:** A simple, modern interface aimed at "vibe coders" and developers.
-- **Visual Output:** The result is not just text; it displays structured architecture and diagrams.
-- **Grounded Answers:** Clear visual indication of sources to prove "no hallucinations".
-
-## 7. Technical Stack
-
-- **Orchestration:** LangChain / Custom RAG Pipeline.
-- **LLM:** Gemini (for generation and multimodal capabilities).
-- **Embeddings:** \* **Text:** Gemini Embeddings.
-  - **Image:** CLIP (e.g., `CLIP-ViT-L-14`) for features.
-- **Vector Database:** Postgres with `pgvector`.
-- **Backend:** FastAPI.
-- **Frontend:** Chainlit.
+This project was built as a "Pure RAG" application using **LangChain**, focusing on strict retrieval and generation orchestration without autonomous agents.
 
 ---
 
-## 8. Implementation Details
+## Key Features
 
-### Data Traceability
+- **Multimodal Retrieval**: Searches across text case studies and architecture diagrams simultaneously.
+- **Grounded Generation**: Answers are strictly based on retrieved context, reducing hallucinations.
+- **Visual Evidence**: Displays the actual architecture diagrams used to generate the answer.
+- **Interactive "Vibecoded" UI**: A modern chat interface built with **Chainlit**.
+- **Automated Evaluation**: Includes a built-in evaluation pipeline for measuring retrieval recall and answer faithfulness.
 
-Every document and chunk includes full provenance tracking:
+## System Architecture
 
-| Field        | Description                                    |
-| ------------ | ---------------------------------------------- |
-| `doc_id`     | Stable SHA256-based document identifier        |
-| `chunk_id`   | Unique chunk ID (format: `CHK_{hash}_{index}`) |
-| `source_uri` | Full URL to original GitHub source             |
-| `created_at` | ISO 8601 timestamp of ingestion                |
+The system follows a standard RAG topology:
 
-### Image Registry
+1.  **Ingestion Layer**:
+    - Loads raw data from `data/raw/` (JSON format).
+    - Processes text chunks and downloads/links images.
+    - Generates embeddings using **Gemini Embedding** model.
+    - Stores vectors and metadata in **PostgreSQL** (via `pgvector`).
 
-Persistent metadata storage for all architecture diagrams:
+2.  **Retrieval Layer**:
+    - **Hybrid Search**: Combines semantic vector search with keyword filtering.
+    - **Multimodal**: User queries can trigger image lookups based on semantic similarity.
 
-- Location: `data/images/image_registry.json`
-- Tracks: image ID, project name, captions, source URLs
+3.  **Generation Layer**:
+    - **LLM**: Google **Gemini 2.0 Flash**.
+    - **Orchestration**: **LangChain** constructs the prompt with context (text + image captions).
 
-### Retrieval System
-
-- **Hybrid Search:** BM25 keyword search + Vector similarity
-- **Reranking:** FlashRank cross-encoder for improved precision
-- **Minimum Relevance:** Score threshold (0.35) for "I don't know" responses
-
-### Inline Citations
-
-All generated responses include:
-
-- Inline citations: `[Source Name]` or numbered `[1]`, `[2]`
-- References section with source URLs
-- Figure references for architecture diagrams
-
-### Debug Mode (UI Settings)
-
-Toggle debug view to display:
-
-- Retrieval mode used (hybrid/vector/keyword)
-- Chunk relevance scores
-- Processing time
-- Retrieved chunk previews
+4.  **Interface**:
+    - **Chainlit** provides the chat UI, rendering markdown and images inline.
 
 ---
 
-## 9. Quick Start
+## Setup & Installation
+
+### Prerequisites
+
+- **Python 3.10+**
+- **Docker Desktop** (for PostgreSQL with `pgvector`)
+- A **Google Cloud API Key** (for Gemini)
+
+### 1. Clone & Install Dependencies
 
 ```bash
-# 1. Start PostgreSQL with PGVector
-docker-compose up -d
-
-# 2. Install dependencies
+# Install Python dependencies
 pip install -r requirements.txt
+```
 
-# 3. Set environment variables
-cp .env.example .env
-# Edit .env with your GEMINI_API_KEY
+### 2. Environment Configuration
 
-# 4. Run data pipeline
-python -m isaac_scraper    # Scrape content
-python -m isaac_ingestion  # Ingest to vector DB
+Create a `.env` file in the root directory:
 
-# 5. Start the application
-chainlit run app.py
+```ini
+# .env
+GEMINI_API_KEY=your_google_api_key_here
+
+# Postgres Connection (Default, assuming Docker setup below)
+POSTGRES_CONNECTION_STRING=postgresql+psycopg2://admin:secret@localhost:5433/isaac_vec_db
+```
+
+### 3. Start Vector Database
+
+Use the provided `docker-compose.yml` to start a persistent PostgreSQL instance with `pgvector` enabled:
+
+```bash
+docker-compose up -d
 ```
 
 ---
 
-## 10. System Evaluation
+## Usage Guide
 
-Run comprehensive evaluation of retrieval and generation quality:
+### Step 1: Ingest Data
+
+Before asking questions, you must populate the vector database with the case studies and diagrams.
 
 ```bash
-# Create evaluation dataset (30 queries)
-python -m isaac_eval --create-dataset
+python -m isaac_ingestion
+```
 
+This script will:
+
+1.  Load data from `data/raw/isaac_raw_data.json`.
+2.  Download/verify images in `data/images/`.
+3.  Compute embeddings.
+4.  Index everything into PostgreSQL.
+
+### Step 2: Run the UI
+
+Start the Chat Interface:
+
+```bash
+chainlit run app.py
+```
+
+Opens automatically at `http://localhost:8000`.
+
+### Step 3: Example Queries
+
+Try asking:
+
+**Text-heavy queries:**
+
+- _"How does Gojek handle high-concurrency ride matching?"_
+- _"Explain the database sharding strategy for a Twitter-like feed."_
+
+**Visual queries (requires diagrams):**
+
+- _"Show me the architecture diagram for the courier tracking system."_
+- _"What are the components shown in the microservices data flow?"_
+- _"Compare the caching strategies shown in the diagrams."_
+
+---
+
+## Evaluation
+
+The project includes a comprehensive evaluation module to measure RAG performance.
+
+**Run the full evaluation suite:**
+
+```bash
 # Run full evaluation
 python -m isaac_eval
 
 # Run retrieval-only evaluation (faster)
 python -m isaac_eval --no-generation
-
-# Generate markdown report
-python -m isaac_eval --markdown
 ```
 
-### Evaluation Metrics
+Flags:
 
-**Retrieval:**
-- Recall@k / Precision@k (k=1,3,5,10)
-- MRR (Mean Reciprocal Rank)
-- Hit Rate for text and images
+- `--create-dataset`: Regenerate the Golden Dataset/Eval Set.
+- `--no-generation`: Run only retrieval metrics (faster).
+- `-v`: Verbose output.
 
-**Generation:**
-- Faithfulness (grounding in context)
-- Citation correctness
-- Answer relevance
-- Refusal accuracy (off-topic)
-- "I don't know" accuracy
+**Metrics Tracked:**
 
-### Evaluation Dataset
-
-30 queries covering:
-- Text-to-architecture (easy/medium/hard)
-- Image similarity search
-- Off-topic detection
-- Edge cases
+- **Retrieval**: Recall@k, MRR (Mean Reciprocal Rank).
+- **Generation**: Faithfulness (Groundedness), Answer Relevance.
 
 ---
 
-## 11. Data Sources & Licensing
+## Project Structure
 
-See [DATA_SOURCES.md](DATA_SOURCES.md) for complete information about:
+```
+ISAAC/
+├── app.py                # Chainlit UI Entry Point
+├── chainlit.md           # UI Welcome Config
+├── docker-compose.yml    # Vector DB (Postgres)
+├── requirements.txt      # Python Dependencies
+├── data/
+│   ├── images/           # Local image storage
+│   └── raw/              # Raw knowledge corpus
+├── isaac_core/           # Configuration & Constants
+├── isaac_ingestion/      # ETL Pipeline (Load -> Chunk -> Embed -> Store)
+├── isaac_generation/     # RAG Logic (Retrieval -> Generation)
+├── isaac_eval/           # Evaluation Framework
+└── isaac_scraper/        # (Optional) Data collection tools
+```
 
-- Content sources and licensing (CC BY 4.0)
-- Privacy constraints
-- Attribution requirements
+## Implementation Report Summary
+
+- **Domain**: Software Architecture Knowledge Base.
+- **Chunking**: Semantic chunking preserving section headers.
+- **Multimodal Strategy**: Images are indexed via their captions and associated text context. The "Multimodal" aspect is achieved by retrieving grounded image references and passing them to the multimodal Gemini model for analysis when needed.
+- **Latency**: Optimized using `gemini-2.0-flash` for sub-5s responses on typical queries.
+
+---
+
+_Built with LangChain, Chainlit, and Gemini._

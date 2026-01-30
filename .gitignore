@@ -1,27 +1,81 @@
+# Environment Variables
 .env
 .env.local
+.env.*
 
+# Python
 __pycache__/
 *.py[cod]
-*$py.class
+*.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
 
+# Virtual Environment
 venv/
 .venv/
 env/
+ENV/
 
-isaac_raw_data.json
+# Logs
 *.log
+isaac.log
+logs/
 
+# Data (Exclude large datasets and images)
+data/
+!data/.gitkeep
+isaac_raw_data.json
+
+# ISAAC Specific
+# Exclude evaluation run results (generate many JSONs)
+isaac_eval/results/*
+!isaac_eval/results/.gitkeep
+
+# Testing & Coverage
 .pytest_cache/
 .coverage
+.coverage.*
 htmlcov/
+coverage.xml
 
+# Type Checking
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# IDE Settings
 .vscode/
 .idea/
 *.swp
+*.swo
 
+# SonarQube
 .scannerwork/
 .sonar/
 
-data/
-isaac.log
+# OS Generated Files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+Desktop.ini
