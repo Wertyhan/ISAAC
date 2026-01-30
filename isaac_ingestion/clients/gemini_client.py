@@ -1,3 +1,5 @@
+"""Gemini Vision Client - Image description generation."""
+
 import logging
 import time
 from pathlib import Path
@@ -15,8 +17,6 @@ from isaac_ingestion.exceptions import (
 
 logger = logging.getLogger(__name__)
 
-
-# Constants
 DEFAULT_PROMPT = """Analyze this technical diagram or image and provide a concise description.
 Focus on:
 - The main components or systems shown
@@ -28,7 +28,6 @@ Keep the description under 200 words and technical in nature."""
 FALLBACK_DESCRIPTION = "[Image description unavailable]"
 
 
-# Client
 class GeminiVisionClient:
     """Gemini Vision API client for image descriptions."""
     
@@ -83,7 +82,6 @@ class GeminiVisionClient:
     
     def _generate(self, image_path: Path, prompt: str) -> str:
         try:
-            # Upload file first (efficient for large images)
             uploaded_file = self._load_image(image_path)
             
             response = self._client.models.generate_content(
@@ -99,18 +97,38 @@ class GeminiVisionClient:
             logger.debug(f"Generated description for {image_path.name}: {description[:100]}...")
             return description
             
-        except genai.errors.ResourceExhausted as e:
-            raise GeminiQuotaExceededError(str(e)) from e
-        except genai.errors.RateLimitError as e:
-            raise GeminiRateLimitError() from e
-        except genai.errors.InvalidArgument as e:
-            logger.warning(f"Invalid image format or request: {image_path.name} - {e}")
-            return FALLBACK_DESCRIPTION
+        except genai.errors.ClientError as e:
+            return self._handle_client_error(e, image_path)
+        except genai.errors.ServerError as e:
+            raise GeminiAPIError("Server error", str(e)) from e
+        except genai.errors.APIError as e:
+            self._handle_api_error(e)
         except Exception as e:
             raise GeminiAPIError("Generation failed", str(e)) from e
     
+    def _handle_client_error(self, e: Exception, image_path: Path) -> str:
+        """Handle 4xx client errors, may raise or return fallback."""
+        code = getattr(e, 'code', None)
+        if code == 429:
+            raise GeminiRateLimitError() from e
+        if code == 403:
+            raise GeminiQuotaExceededError(str(e)) from e
+        if code == 400:
+            logger.warning(f"Invalid image format or request: {image_path.name} - {e}")
+            return FALLBACK_DESCRIPTION
+        raise GeminiAPIError("Client error", str(e)) from e
+    
+    def _handle_api_error(self, e: Exception) -> None:
+        """Handle generic API errors, always raises."""
+        code = getattr(e, 'code', None)
+        if code == 429:
+            raise GeminiRateLimitError() from e
+        if code == 403:
+            raise GeminiQuotaExceededError(str(e)) from e
+        raise GeminiAPIError("API error", str(e)) from e
+    
     def _load_image(self, image_path: Path) -> types.File:
-        return self._client.files.upload(path=image_path)
+        return self._client.files.upload(file=image_path)
 
     def close(self) -> None:
         self._client = None

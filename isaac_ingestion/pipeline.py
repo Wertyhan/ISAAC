@@ -1,5 +1,8 @@
+"""Ingestion Pipeline - ETL from raw JSON to vector store."""
+
 import json
 import logging
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import List, Dict, Any, Optional, Callable, Iterable
 
@@ -7,10 +10,11 @@ from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_postgres import PGVector
 from langchain_core.documents import Document
 
-from isaac_ingestion.config import Config, ImageMeta
+from isaac_ingestion.config import Config, ImageMeta, generate_doc_id
 from isaac_ingestion.clients.gemini_client import GeminiVisionClient
 from isaac_ingestion.services.image_manager import ImageManager
 from isaac_ingestion.services.text_processor import TextProcessor
+from isaac_ingestion.services.image_registry import ImageRegistry, get_image_registry
 from isaac_ingestion.exceptions import (
     IngestionError,
     InvalidInputError,
@@ -20,10 +24,12 @@ from isaac_ingestion.exceptions import (
 
 logger = logging.getLogger(__name__)
 
+# GitHub base URL for source URI generation
+GITHUB_BASE_URL = "https://github.com/donnemartin/system-design-primer/tree/master"
 
-# Orchestrator
+
 class IngestionPipeline:
-    """ETL pipeline: JSON -> images -> chunks -> vector store."""
+    """ETL pipeline: JSON -> images -> chunks -> vector store with image registry."""
     
     def __init__(
         self,
@@ -31,16 +37,19 @@ class IngestionPipeline:
         gemini_client: GeminiVisionClient,
         image_manager: ImageManager,
         text_processor: TextProcessor,
+        image_registry: Optional[ImageRegistry] = None,
     ):
         self._config = config
         self._gemini = gemini_client
         self._images = image_manager
         self._text = text_processor
+        self._image_registry = image_registry or get_image_registry()
         self._vector_store: Optional[PGVector] = None
         self._stats = {
             "projects_processed": 0,
             "images_downloaded": 0,
             "images_described": 0,
+            "images_registered": 0,
             "chunks_created": 0,
             "errors": 0,
         }
@@ -73,6 +82,10 @@ class IngestionPipeline:
         # Persist to vector store
         if all_documents:
             self._persist_documents(all_documents)
+        
+        # Commit image registry
+        self._image_registry.commit()
+        logger.info(f"Image registry stats: {self._image_registry.stats()}")
         
         logger.info(f"Pipeline complete. Stats: {self._stats}")
         return dict(self._stats)
@@ -110,24 +123,43 @@ class IngestionPipeline:
             raise DatabaseConnectionError(f"Failed to connect to vector store: {e}") from e
     
     def _process_project(self, project_data: Dict[str, Any]) -> List[Document]:
+        """Process a single project into document chunks with full traceability."""
         metadata = self._extract_project_metadata(project_data)
         content = self._prepare_content(project_data, metadata)
-        return self._text.create_chunks(content, metadata)
+        chunks = self._text.create_chunks(content, metadata)
+        self._stats["chunks_created"] += len(chunks)
+        return chunks
 
     def _extract_project_metadata(self, project_data: Dict[str, Any]) -> Dict[str, Any]:
+        """Extract comprehensive metadata for full traceability."""
+        project_name = project_data.get("project_name", "unknown")
+        source_path = project_data.get("source_path", "")
+        
+        # Generate stable document ID
+        doc_id = generate_doc_id(project_name, source_path)
+        
+        # Build source URI for citation
+        source_uri = f"{GITHUB_BASE_URL}/{source_path}" if source_path else ""
+        
         return {
-            "project_name": project_data.get("project_name", "unknown"),
+            "doc_id": doc_id,
+            "project_name": project_name,
+            "title": project_data.get("title", project_name),
             "category": project_data.get("category", "general"),
-            "source_path": project_data.get("source_path", ""),
+            "source_path": source_path,
+            "source_uri": source_uri,
             "source": "isaac_scraper",
+            "created_at": datetime.now(timezone.utc).isoformat(),
+            "description": project_data.get("description", ""),
         }
 
     def _prepare_content(self, project_data: Dict[str, Any], metadata: Dict[str, Any]) -> str:
         project_name = metadata["project_name"]
+        doc_id = metadata["doc_id"]
         content = project_data.get("readme_content", "")
         diagram_url = project_data.get("diagram_url")
 
-        logger.debug(f"Processing: {project_name}")
+        logger.debug(f"Processing: {project_name} (doc_id: {doc_id})")
 
         # Clean content
         content = self._text.clean_text(content)
@@ -139,15 +171,16 @@ class IngestionPipeline:
         if diagram_url and diagram_url not in image_urls:
             image_urls.insert(0, diagram_url)
 
-        # Download and describe images
+        # Download and describe images (pass doc_id for linking)
         for url in image_urls:
-            content = self._process_image(content, url, project_name)
+            content = self._process_image(content, url, project_name, doc_id)
         
         return content
     
-    def _process_image(self, content: str, url: str, project_name: str) -> str:
-        # Download
-        image_meta = self._images.download(url, project_name)
+    def _process_image(self, content: str, url: str, project_name: str, doc_id: str) -> str:
+        """Download image and replace link with description token."""
+        # Download (pass doc_id for metadata)
+        image_meta = self._images.download(url, project_name, doc_id=doc_id)
         if not image_meta:
             return content
         
@@ -156,6 +189,21 @@ class IngestionPipeline:
         # Generate description
         description = self._gemini.generate_description(image_meta.local_path)
         self._stats["images_described"] += 1
+        
+        # Register image in registry for independent retrieval
+        file_size = image_meta.local_path.stat().st_size if image_meta.local_path.exists() else None
+        self._image_registry.register(
+            image_id=image_meta.image_id,
+            doc_id=doc_id,
+            project_name=project_name,
+            source_uri=url,
+            filepath=str(image_meta.local_path),
+            file_hash=image_meta.file_hash,
+            description=description,
+            caption=image_meta.caption,
+            file_size=file_size,
+        )
+        self._stats["images_registered"] += 1
         
         # Replace in content
         content = self._text.replace_link_with_token(

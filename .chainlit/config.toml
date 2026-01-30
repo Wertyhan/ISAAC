@@ -1,0 +1,75 @@
+# ISAAC - Chainlit Configuration
+# ================================
+# Premium, Newton-inspired configuration for the architecture advisor
+
+[project]
+# Disable telemetry for clean deployment
+enable_telemetry = false
+
+# Custom styling
+allow_origins = ["*"]
+
+# Session settings
+user_env = []
+session_timeout = 7200  # 2 hours
+
+[features]
+# Disable default Chainlit branding elements
+prompt_playground = false
+multi_modal = true
+
+# Audio features disabled for professional text-focused experience
+spontaneous_file_upload.enabled = true
+spontaneous_file_upload.max_files = 5
+spontaneous_file_upload.max_size_mb = 20
+spontaneous_file_upload.accept = ["image/*", "application/pdf", ".txt", ".md", ".json"]
+
+# Enable LaTeX for mathematical notation
+latex = true
+
+# Disable HTML rendering for security
+unsafe_allow_html = false
+
+[features.audio]
+enabled = false
+
+[UI]
+# Application name and description
+name = "ISAAC"
+description = "Intelligent System Architecture Advisor & Consultant"
+
+# Hide Chainlit branding completely
+show_readme_as_default = false
+hide_cot = false
+
+# Custom theming
+default_theme = "dark"
+
+# Collapsed sidebar by default for cleaner experience
+default_collapse_content = true
+
+# Custom CSS file
+custom_css = "/public/isaac.css"
+
+# Custom icons - ISAAC branding
+favicon = "public/icon_isaac.png"
+logo_dark = "public/icon_isaac.png"
+logo_light = "public/icon_isaac.png"
+
+[UI.theme]
+# Newton-inspired dark color palette
+
+[UI.theme.dark]
+# Background colors - deep cosmic tones
+background = "#0a0d14"
+paper = "#12161f"
+
+# Primary brand color - antique brass/gold
+primary = "#c9a962"
+
+# Text colors
+text = "#e8e4d9"
+
+[meta]
+# Application metadata
+generated_by = "ISAAC UI System"

@@ -1,4 +1,5 @@
-# Imports
+"""Processors - Markdown processing and image selection."""
+
 import logging
 import os
 from typing import Optional, List
@@ -20,7 +21,6 @@ from isaac_scraper.constants import (
 logger = logging.getLogger(__name__)
 
 
-# Link Transformation
 class LinkTransformer(MarkdownRenderer):
     
     def __init__(self, base_url: str):
@@ -58,7 +58,6 @@ class LinkTransformer(MarkdownRenderer):
         return ""
 
 
-# Markdown processing
 class MarkdownProcessor:
 
     def __init__(self):
@@ -118,7 +117,6 @@ class MarkdownProcessor:
         return "".join(self._flatten_text(c) for c in el.children)
 
 
-# Image selection
 class ImageSelector:
     
     def is_image(self, name: str) -> bool:

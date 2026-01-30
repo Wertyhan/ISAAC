@@ -1,3 +1,5 @@
+"""GitHub Scraper - Crawls repository structure and extracts content."""
+
 import base64
 import logging
 from typing import List, Optional, Set, Dict
@@ -13,7 +15,6 @@ from isaac_scraper.exceptions import ContentFetchError, RateLimitError
 logger = logging.getLogger(__name__)
 
 
-# Orchestrator
 class CrawlOrchestrator:
  
     def __init__(
@@ -150,7 +151,6 @@ class CrawlOrchestrator:
             return None
 
 
-# Scraper Facade
 class GitScraper:
     
     def __init__(self, config: Config):
